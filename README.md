@@ -1,6 +1,24 @@
 # flywheel v0.3.0
 
-> **Sensors-first / harness-driven loop engine.** auto mode を前提に「設計が無ければ実装を物理ブロック」する門を hook で強制し、設計が validate を通って初めて実装ゲートが開き、goal 達成まで自動で回す。[o-m-cc](https://github.com/kok1eee/o-m-cc) を workflow ライブラリとして compose する driver。
+> **Sensors-first / harness-driven loop engine.** auto mode を前提に「設計が無ければ実装を物理ブロック」する門を hook で強制し、設計が validate を通って初めて実装ゲートが開き、goal 達成まで自動で回す。設計フェーズの judgment library（grill/critic/scout/design/discovery-council 等）+ validate-plan を同梱した**自己完結プラグイン**（o-m-cc 後継）。
+
+## インストール
+
+private repo（`kok1eee/flywheel`）。kok1eee アカウントの認証があるマシンで:
+
+```bash
+# GitHub から（別マシン）
+claude plugin marketplace add git@github.com-kok1eee:kok1eee/flywheel.git
+claude plugin install flywheel@kok1eee-flywheel
+# → 再起動で hooks 有効化
+
+# ローカル開発（編集を即反映）
+claude plugin marketplace add /path/to/flywheel
+claude plugin install flywheel@kok1eee-flywheel
+#   編集後: claude plugin marketplace update kok1eee-flywheel && claude plugin update flywheel@kok1eee-flywheel
+```
+
+dormant 既定なので install しても `flywheel start` するまで通常作業を邪魔しない。
 
 ## なぜ作ったか
 

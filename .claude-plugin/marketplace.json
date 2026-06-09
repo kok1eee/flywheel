@@ -1,10 +1,10 @@
 {
-  "name": "kok1eee-local",
+  "name": "kok1eee-flywheel",
   "owner": {
     "name": "kok1eee"
   },
   "metadata": {
-    "description": "Local dev marketplace (flywheel — Sensors-first loop engine)",
+    "description": "flywheel — Sensors-first / harness-driven loop engine（o-m-cc 後継）",
     "version": "1.0.0"
   },
   "plugins": [
