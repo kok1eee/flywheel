@@ -1,6 +1,18 @@
 {
-  "description": "flywheel hooks — Sensors-first loop engine (design-gate + design-validator + loop-driver + intent-router)",
+  "description": "flywheel hooks — Sensors-first loop engine (session-greeter + design-gate + design-validator + loop-driver + intent-router)",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-greeter.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "matcher": "",

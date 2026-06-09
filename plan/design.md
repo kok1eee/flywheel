@@ -185,14 +185,17 @@ done で plan/ が空になるので、通常フローでは start 側の archiv
 
 **backlog（FR-13）**: `.flywheel/backlog.jsonl`（1行1 goal: `{goal, eval_cmd, polish}`）。`add` が append、`list` が表示、`next` が「dormant か done」を確認して先頭を pop → start。**cron は持たない**: 外側の定期実行は native `/loop`/`/schedule` に委譲。`done` 時 loop-driver が残数を stderr で通知し `flywheel next` を促す（auto-chain は /goal 完了セマンティクスが絡むため将来）。
 
-## 低摩擦入口（FR-14 / FR-15 / FR-16）
+## 低摩擦入口（FR-14 / FR-15 / FR-16 / FR-17）
 
-`flywheel start "..." --eval "..."` を毎回打つ摩擦を3段で下げる。共通の土台は **FR-14 eval 自動検出**（`fw_detect_eval` がプロジェクトファイルから test/lint を推定、`_start_goal` が `--eval` 省略時に使う）。
+`flywheel start "..." --eval "..."` を毎回打つ摩擦を下げ、そもそも start の存在を思い出させる。共通の土台は **FR-14 eval 自動検出**（`fw_detect_eval` がプロジェクトファイルから test/lint を推定、`_start_goal` が `--eval` 省略時に使う）。入口は「軽い→重い」の4段:
 
 | 入口 | 機構 | 摩擦 |
 |---|---|---|
+| **FR-17 greeter** | `hooks/session-greeter.sh`（SessionStart）が dormant 時に start の存在を1行案内 | 0コマンド・gate を閉じない（思い出させるだけ）|
 | **FR-16 slash** | `commands/start.md` → `/flywheel:start <goal>` が `flywheel start` を実行 | CLI を打たず1コマンド（明示・安全）|
 | **FR-15 intent-router** | `hooks/intent-router.sh`（UserPromptSubmit）が build 意図を検知して auto-engage | 何も打たない（invisible）。ただし **opt-in `FLYWHEEL_AUTO=1`** |
+
+> **なぜ「常時 gate ON（最初から start モード）」にしないか**: goal の無いセッションで gate を閉じると validate を通す spec が書けず門が永久に閉じ、質問・調査・他リポ作業・flywheel 自己改修まで全部 block される（FR-15 を opt-in にした誤爆問題の常時 ON 版）。greeter は gate を**閉じず**思い出させるだけ。「いちいち start を打つのが面倒」は FR-15 auto-engage（`FLYWHEEL_AUTO=1`）で解く。
 
 **intent-router の安全弁**（誤爆＝質問/些末で gate が閉じる事故の回避）:
 - opt-in 既定 off。除外パターン（質問・調査・説明）で engage しない。active 中は触らない。`flywheel reset`/`FLYWHEEL_OFF=1` で即解除。state 遷移は他 hook と同じく CLI 経由なので、誤 engage しても loop は壊れず reset で戻せる。

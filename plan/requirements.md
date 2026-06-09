@@ -96,6 +96,14 @@ goal が `done` に達したとき、その `plan/requirements.md` + `plan/desig
 ### FR-16: slash command 定型化（v0.4.0）
 `/flywheel:start <作りたいもの>` で `flywheel start`（eval 自動検出）を起動し、設計フェーズへ誘導する。CLI を打たず1コマンドで開始できる明示的入口（auto-engage を opt-in にしない派の受け皿）。
 
+### FR-17: dormant 時の入口案内（SessionStart・低摩擦・v0.4.1）
+flywheel が dormant（state なし＝門が開いている）なセッション冒頭で、**SessionStart hook** が「設計駆動で作るなら `flywheel start`（or `/flywheel:start`）」を1行案内し、入口の discoverability を上げる。FR-15 と違い **gate を閉じない**（state を作らず、ただ思い出させるだけ）ので誤爆リスクが無い、最も軽い入口層。ノイズを避けるため:
+- **dormant のときだけ**出す（goal 進行中は loop 系が喋るので沈黙）
+- `FLYWHEEL_OFF=1` で沈黙
+- 現在の `FLYWHEEL_AUTO` 状態を併記し、常用するなら auto-engage（FR-15）を勧める
+
+「最初は start を使え」を強制（gate を閉じる）でなく示唆（案内）で伝える。常時 gate ON は質問・調査・他作業まで巻き込み誤爆地獄になるため**採らない**——摩擦低減の欲求は FR-15 auto-engage で満たす。
+
 ## 非スコープ
 
 - **o-m-cc の置き換え / 作り直し**: flywheel は driver であり、o-m-cc の skill・agent・state 層（atoms 等）・jj ルール・leak gate を再実装しない（FR-8）。両者は compose 関係。
