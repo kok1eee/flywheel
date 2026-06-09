@@ -1,0 +1,18 @@
+{
+  "name": "kok1eee-local",
+  "owner": {
+    "name": "kok1eee"
+  },
+  "metadata": {
+    "description": "Local dev marketplace (flywheel — Sensors-first loop engine)",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "flywheel",
+      "description": "Sensors-first / harness-driven loop engine。auto mode を前提に『設計が無ければ実装を物理ブロック』する門を hook で強制し、設計合格後は goal 達成まで自動で回す。o-m-cc を workflow ライブラリとして compose する driver。",
+      "version": "0.3.0",
+      "source": "./"
+    }
+  ]
+}

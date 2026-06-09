@@ -1,0 +1,234 @@
+# flywheel — design
+
+> requirements.md の FR-1〜FR-10 を、hook・state machine・gate ロジックに落とす設計。v1 は walking skeleton（FR scope は各 FR の「v1」欄を参照）。
+
+## 設計原則（o-m-cc から継承し、1点だけ反転）
+
+| 継承する原則 | flywheel での扱い |
+|---|---|
+| Lightweight（Markdown + Shell、ビルド不要） | 継承。hook は Bash + `set -euo pipefail` + 共通 lib |
+| Plugin ネイティブ（settings.json で自動設定） | 継承。`.claude-plugin/plugin.json` + `hooks/hooks.json` |
+| peer-to-peer（中央オーケストレーター不在） | 継承。loop は **hook + state machine** が駆動（agent ではない）|
+| Guides × Sensors の2軸 | **Sensors に全振り**。Guides（prose 誘導）は補助に降格し、門・継続は Sensor が強制 |
+| Progressive Disclosure | 継承。state file は最小、判断知は o-m-cc 側に置く |
+
+**反転点**: o-m-cc は「設計しよう」と Guides で誘導 → auto mode が飛ばす。flywheel は「設計が無いなら実装を通さない」を Sensor で物理強制（FR-1）。これが唯一にして最大の差別化。
+
+## アーキテクチャ全体図
+
+```
+                    ┌─────────────── state file (.flywheel/state.json) ───────────────┐
+                    │  { phase, goal, design_path, eval_criteria, history[] }          │
+                    └──────────────────────────────┬──────────────────────────────────┘
+                          read ▲          read ▲   │   read ▲           read ▲
+                               │                │   │        │                │
+  ① 適当prompt          [design-gate]      [loop-driver]  [phase-tracker]   [eval-gate]
+       │              PreToolUse(FR-1)    Stop(FR-5)     Post*(FR-7)      Stop/eval(FR-6)
+       ▼                    │ block             │ 継続          │ 遷移            │ 判定
+  UserPromptSubmit ───▶ phase 判定 ──┐         │              │                │
+   (intent 検知)                     │         ▼              ▼                ▼
+                                     └──▶ o-m-cc skill を steer（FR-8 / compose の2系統）
+                                          design / discovery-council / grill /
+                                          critic / scout / sisyphus / verification
+```
+
+flywheel が**所有する**のは: state machine・4 つの hook・gate ロジック・bin/flywheel CLI。
+flywheel が**呼ぶ**のは: o-m-cc の skill / agent / bin（FR-8、再実装しない）。
+
+## state machine（FR-7）
+
+state file: `.flywheel/state.json`（リポ root 直下。o-m-cc の plan/ と並ぶ）
+
+```
+no-spec ──①prompt(intent検知)──▶ designing ──┐
+   ▲                                          │ grill/critic で叩く（FR-3）
+   │                                          ▼
+   │                              validate-plan design 合格?（FR-4）
+   │                                  │ no ──┐
+   │                                  │      └─▶ designing に留まる（設計 loop）
+   │                                  │ yes
+   │                                  ▼
+   │                              spec-ready ══門開く（FR-1 解錠）══▶ implementing
+   │                                                                      │
+   │                                          polish(simplify steer, FR-11)◀┘ 1ターン
+   │                                                  │
+   │  goal 達成(FR-6) ◀── eval ◀── eval-gate 判定(ty/ruff/test) ◀────────────┘
+   │       │ 達成                      │ 未達(FR-5)
+   │       ▼                           └─▶ implementing に戻る（loop）
+   └──── done
+```
+
+| phase | design-gate(FR-1) | loop-driver(FR-5) | 意味 |
+|---|---|---|---|
+| `no-spec` | **block** 実装ツール | — | まだ設計が無い |
+| `designing` | **block** 実装ツール | 設計 loop 継続 | 設計を立てて叩いている最中 |
+| `spec-ready` | **open** | — | validate 合格。実装に入れる |
+| `implementing` | open | **継続**（止めない） | 実装中 |
+| `polish` | open | simplify を steer して eval へ | 整理1ターン（FR-11、--polish 時のみ）|
+| `eval` | open | 未達なら継続 | 完了判定中（ty/ruff/test）|
+| `done` | open | 停止許可 | goal 達成。loop 終了 |
+
+state は各 hook が読み、**hook（Sensor）が書く**。会話履歴に非依存（FR-7）。
+
+### state を誰が進めるか（自己矛盾の回避・最重要）
+
+**原則: state 遷移は全て hook がモデルの自然なツール使用を観測して進める。モデルは一度も state を進めない。** モデルに `bin/flywheel state set` を撃たせる設計は禁止——それは「auto mode でモデルがアクションを撃たない」という flywheel が殺そうとしている問題の再発であり、自己矛盾になる。モデルは「設計を書く / コードを書く」という**作業だけ**を行い、harness がそれを観測して門を開閉する。
+
+| 遷移 | 駆動する hook（イベント） | hook が観測するもの |
+|---|---|---|
+| `no-spec → designing` | **intent-router**（UserPromptSubmit） | prompt が新規作業意図 → state を designing にし設計を steer |
+| `designing → spec-ready` | **design-validator**（PostToolUse, Write→plan/design.md） | design.md 書き込みを検知 → `validate-plan design` を自動実行 → 合格で遷移 |
+| `spec-ready → implementing` | **design-gate**（PreToolUse, 最初の source 編集を許可した瞬間） | 門が開いて最初の実装編集が通った → implementing へ |
+| `implementing → eval` | **loop-driver**（Stop） | モデルが turn を終えようとした → eval phase へ送り eval-gate 起動 |
+| `eval → done / implementing` | **loop-driver + eval-gate**（Stop） | eval 基準を CLI で判定 → 達成で done、未達で implementing に戻す |
+
+CLI（validate-plan / test / build）は hook が**直接実行**できる。skill（design/grill/critic/sisyphus/verification）は hook が**直接呼べない**ので exit 2 + steer メッセージでモデルに撃たせる（下記「compose の2系統」）。どちらも state 遷移自体は hook が書くので、モデルの撃ち損ねは state を壊さない。
+
+## hook 設計
+
+### design-gate（PreToolUse, matcher: Edit|Write|Bash）— FR-1, FR-2
+1. state.json を読む。phase が `spec-ready`/`implementing`/`eval`/`done` なら **即 pass**（門は開いている）。
+2. phase が `no-spec`/`designing` のとき、ツール使用が**実装意図**か判定:
+   - **v1: Edit/Write の対象が plan/ ・ .flywheel/ ・ docs/ ・ README 以外（= source）→ 実装意図 として block**
+   - **v1: Bash は常に pass**（H-1: `pytest` と `python analyze.py` を正規表現で安定区別できない。過検知で bypass 常態化 or 未検知で素通り、どちらも価値命題を壊す。Bash の実装意図判定は精度を上げてから v2 で導入）
+   - それ以外（調査 grep、plan/ への書き込み等）→ pass
+3. 実装意図 ×（`no-spec`/`designing`）→ **exit 2 + steer**: 「設計フェーズ未完了。先に `plan/design.md` を書き `validate-plan` を通せ。bypass は FLYWHEEL_OFF=1」
+4. `FLYWHEEL_OFF=1` なら全 pass（FR-10）。
+
+> **FR-2 の重さ自動スケール**は「別経路で素通り」させない＝門は常に判定する。些末さは設計フェーズ側（grill のトリアージ）が「設計=自明、即 validate 合格」で吸収し、state を素早く `spec-ready` に送ることで実現する。design-gate 自身に閾値ロジックは持たせない（責務分離）。
+
+### loop-driver（Stop hook）— FR-5, FR-9, FR-6
+**継続そのものは native `/goal` に compose する（C-1 対策）。** Stop hook で turn 継続を自作すると、Claude Code の Stop hook 連続 block の **セッション cap（〜8回）** に当たり「goal 達成まで止まらない」が 8 ターンで打ち切られうる。しかも o-m-cc に Stop hook 実績がゼロで未検証。よって:
+- **継続エンジン = native `/goal`**（ターン跨ぎ継続は元々これの仕事。①の入口で goal を確立し、native が turn を運ぶ）
+- **flywheel の Stop hook = polish 挿入 + eval veto に徹する**:
+  - phase が `spec-ready`/`implementing` → `polish` に進め、`Skill: simplify` を steer して exit 2（モデルに整理の1ターンを与える、FR-11）。polish 無効時（`--no-polish`）はこの段を飛ばして直接 eval。
+  - phase が `polish` → `eval` に進め、eval-gate（`eval_cmd` = ty/ruff/test）を CLI 実行。
+  - phase が `eval` で未達なら exit 2 で「done を拒否」して `implementing` に戻す。「毎ターン回す」のではなく「整理1回 + 完了判定で veto」だけなので cap に当たりにくい。
+- 停止許可: phase が `done`、または `designing` で grill が人間入力待ち（FR-9 の停止点 b）。
+- 暴走防止: veto 連続回数の上限を持ち、超過で human に返す（FR-10）。
+
+> **spike 結果（claude-code-guide で一次情報確認済み・2026-06-09）**:
+> - Stop hook exit 2 → stderr がモデルに error feedback として渡り作業継続（Q1 ✅）
+> - block cap = **8回「連続・進捗なし」で override**（stuck 検出）。`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` で変更可。`stop_hook_active:true` を hook が読めば block 活動中か判定可。**進捗があればリセットされるので長時間 loop でも問題なし**——cap はむしろ暴走保護（FR-10）として歓迎（Q2 ✅）
+> - `/goal` = session-scoped prompt-based Stop hook + Haiku evaluator。**継続は /goal に compose**、flywheel 自前 Stop hook は eval veto に徹する方針をガイドが追認（Q3 ✅）
+> - PostToolUse は `tool_input.file_path`（Write/Edit）と `tool_output.exit_code`（Bash）を input JSON で読める → **design-validator の「design.md Write 検知 → validate-plan 実行 → state 遷移」が実装可能と確定**（Q4 ✅）
+> - hook から skill 直接起動は不可、`additionalContext`/stderr で steer のみ（Q5 → C-3 の2系統設計が正しい）
+
+### phase-advancer（state を進める hook 群）— FR-7
+**state 遷移は全て hook がモデルの自然な作業を観測して進める（C-2 対策、モデルは state を進めない）。** 専用の単一 tracker ではなく、各イベント hook が自分の遷移を担当する:
+- **intent-router（UserPromptSubmit）**: 新規作業 prompt → `no-spec`→`designing`、設計を steer
+- **design-validator（PostToolUse, Write→plan/design.md）**: design.md 書き込みを検知 → `validate-plan design` を**直接実行**（CLI 委譲）→ exit 0 なら `designing`→`spec-ready`（FR-4）
+- **design-gate（PreToolUse）**: 門が開いて最初の source 編集が通った瞬間 → `spec-ready`→`implementing`
+- **loop-driver（Stop）**: turn 終了時に `implementing`→`polish`（simplify steer, FR-11）→`eval`、eval-gate 判定で `eval`→`done`/`implementing`
+
+CLI（validate-plan / test / build）の exit code は hook が直接読めるので、これらの遷移は決定論的でモデル非依存。
+
+### eval-gate（FR-6）
+loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し exit code で判定:
+- **静的チェックを連鎖**（決定論・モデル非依存、M-1 対策）。**exit 0 → `done`、非ゼロ → `implementing` に戻す**。
+- 推奨 `eval_cmd`（品質スタックの CLI 段、FR-11）: 型チェック + lint + test を `&&` 連鎖。
+  - Python: `ty check && ruff check && pytest`
+  - TS/JS: `npm run typecheck && npm run lint && npm test`
+- **v2 以降: 挙動検証**（runnable な変更は native run/verify/webapp-testing で起動・観測。o-m-cc verification 挙動ゲート v0.63.0）。LLM 判定を含むので決定論段とは分けて段階導入。
+
+### polish-gate（FR-11・v0.2.0）
+eval の前段。loop-driver が `implementing`→`polish` 遷移時に `Skill: simplify` を steer（exit 2 でモデルに整理の1ターンを与える）。次の Stop で `polish`→`eval` に進む。polish は LLM 整理（Skill steering、非決定論）で、eval（CLI・決定論）と役割が分かれる:
+- **polish**: simplify = 書いた直後の reuse/simplification/efficiency/altitude を潰す
+- **eval**: ty/ruff/test = 型・lint・テストの機械判定
+
+`flywheel start --no-polish` で polish 段を飛ばせる（state の `polish:false`）。
+
+## compose の2系統（hook は skill を呼べない・C-3 対策）
+
+**hook はシェルスクリプトであり、Skill tool を直接呼び出せない。** よって委譲は2系統に厳密に分ける:
+
+| 系統 | 対象 | 実現 | 確実性 |
+|---|---|---|---|
+| **CLI 委譲** | `validate-plan` / `bin/flywheel` / test / build | hook が**直接 exec** | 100%（exit code で判定）|
+| **Skill steering** | design / discovery-council / grill / critic / sisyphus / verification | hook が exit 2 + steer メッセージ → **モデルが Skill tool で呼ぶ** | 100% ではない（モデル判断）|
+
+**重要**: Skill steering は prose 誘導と同じ構造で、Opus 4.7+ が確実に撃つ保証はない。flywheel が o-m-cc より強いのは、**物理ブロック（design-gate）と組み合わせて選択肢を絞る**点: 「他の実装ツールは全て block されている。今できるのは設計を書くことだけ」という状況を作れば、steer の従命率は prose 単独より大幅に上がる。ただし state 遷移自体は CLI 委譲（hook が validate-plan の exit code を読む）で決まるので、**Skill steering が外れても state は壊れない**（C-2 と C-3 の合わせ技で安全性を担保）。
+
+> v1 dogfood で **steer 従命率を計測・記録**する（steer を出した回数 / モデルが実際に該当 skill を撃った回数）。これが低ければ steer メッセージの一意性を上げる or 物理ブロックの範囲を調整する。
+
+## フェーズ別 o-m-cc 委譲表（FR-8 / compose）
+
+| flywheel phase | 委譲先 | 系統 | 人間在席（FR-3） |
+|---|---|---|---|
+| designing（要件） | `discovery-council` / `deep-interview` | steer | grill（在席）/ scout 仮定記録（不在） |
+| designing（設計叩き） | `design` → `grill`（在席）/ `critic`（不在） | steer | ← FR-3 で分岐 |
+| designing（合格判定） | `bin/validate-plan design`（FR-4） | **CLI** | — |
+| implementing | `sisyphus` Step 4-5（実装→検証→修正ループ） | steer | 不在で可 |
+| eval | test/build（v1）→ `verification` 挙動（v2, FR-6） | **CLI**（v1）| 不在で可 |
+| done | `quality-gate`（任意）+ 完了通知 | steer | — |
+
+合格判定（designing→spec-ready）と eval（v1）は **CLI 委譲＝決定論的**。それ以外は steer。state を進めるのは常に CLI 系なので、steer の外れは loop を壊さない。
+
+## bin/flywheel CLI
+
+| サブコマンド | 役割 |
+|---|---|
+| `flywheel start "<適当prompt>" [--eval ..][--no-polish]` | ① 既存 plan を archive(FR-12) → state を `designing` にし設計フェーズ起動 |
+| `flywheel status` | 現在 phase・goal・eval・polish・遷移履歴を表示（FR-10 可観測性）|
+| `flywheel get <jq-filter>` | state.json を読む（hook が内部使用）|
+| `flywheel reset` | state を破棄して dormant に戻す（中断・やり直し）|
+| `flywheel add "<goal>" [--eval ..][--no-polish]` | backlog に goal を1件追加（FR-13）|
+| `flywheel list` | backlog 一覧（FR-13）|
+| `flywheel next` | dormant/done のとき backlog 先頭を pop して start（FR-13）。作業中は拒否 |
+
+## archive と backlog（FR-12 / FR-13）
+
+**archive（FR-12）**: `fw_archive_plan` が `plan/{requirements,design}.md` + `state.json` スナップショットを `plan/archive/<ts>/` に move する。呼ばれるのは2箇所:
+- loop-driver が `done` に遷移した直後（完了スペックを記録、plan/ をクリーンに）
+- `flywheel start`/`next` の冒頭（前回の未完了 plan が残っていれば防御的に退避）。
+done で plan/ が空になるので、通常フローでは start 側の archive は no-op（二重退避しない）。放棄された goal だけ start 側が拾う。
+
+**backlog（FR-13）**: `.flywheel/backlog.jsonl`（1行1 goal: `{goal, eval_cmd, polish}`）。`add` が append、`list` が表示、`next` が「dormant か done」を確認して先頭を pop → start。**cron は持たない**: 外側の定期実行は native `/loop`/`/schedule` に委譲。`done` 時 loop-driver が残数を stderr で通知し `flywheel next` を促す（auto-chain は /goal 完了セマンティクスが絡むため将来）。
+
+## validate-plan パス規約（H-2 対策）
+
+o-m-cc の `bin/validate-plan` は `PLAN_DIR="plan"`（cwd 相対）固定。よって flywheel は **`plan/requirements.md` + `plan/design.md` 規約**に従う:
+- `flywheel start` がリポ root に `plan/` を用意し、設計フェーズはそこに書く
+- `state.json.design_path` は v1 では `plan/design.md` 固定
+- design-validator hook は cwd をリポ root にして o-m-cc の `bin/validate-plan design` をそのまま呼ぶ（再実装しない＝FR-8）
+
+> 実証済み: flywheel 自身の `plan/requirements.md` + `plan/design.md` に対し o-m-cc の `validate-plan all` が「✅ 形式チェック通過」を返すことを確認済み。規約は機能する。
+
+## v1 walking skeleton スコープ
+
+v1 で**作る**（最小で thesis 実証）:
+- **spike（最初のタスク）**: Stop hook 継続挙動 + 8回 cap スコープ + PostToolUse での Bash exit code 取得を実機検証（C-1）。結果で loop-driver/phase-advancer を確定
+- `.flywheel/state.json` の state machine（FR-7）
+- **phase-advancer 群**（C-2 対策、state はモデルでなく hook が進める）: design-validator(PostToolUse) / design-gate(PreToolUse) の遷移責務。v1 の入口は明示 `flywheel start`（intent-router=UserPromptSubmit 自動検知は noisy classifier なので v2 へ）
+- design-gate hook（FR-1）— **v1 は Edit/Write→source のみ block、Bash 素通り**（H-1）+ bypass（FR-10）
+- loop-driver hook（FR-5/FR-6）— **継続は native `/goal` に compose、Stop hook は eval veto に徹する**（C-1）。eval は **test/build exit code のみ**で決定論判定（M-1）
+- `bin/flywheel`（start/status/state/reset）。※`state set` は hook 内部用で、**モデルには撃たせない**（C-2）
+- o-m-cc 委譲は **design → validate-plan(CLI) → sisyphus(steer) → test/build(CLI) の1本道**（FR-8 最小経路）
+
+v1 で**作らない**（v2 以降、requirements 非スコープ）:
+- intent-router（UserPromptSubmit 自動検知）。v1 入口は明示 `flywheel start`。auto 検知は noisy なので精度を上げてから v2
+- FR-3 の headless 分岐（v1 は対話セッション = grill 前提。critic フォールバックは v2）
+- Bash の実装意図 block（H-1: 精度不足。v1 は Edit/Write のみ）
+- eval の挙動検証（FR-6 の v2 部分。v1 は静的 exit code のみ）
+- 複数 goal の並行 loop / 探索ループ
+
+**v1 の合格条件（dogfood）**: 「適当な1プロンプト → flywheel が設計フェーズを強制（source 編集が block される）→ design.md 書き込み → design-validator が validate-plan を自動実行し合格で門が開く → sisyphus 実装 → test/build exit 0 で done」が auto mode で **state 遷移をモデルに撃たせず**（grill 応答のみ人手）に1周回ること。
+
+## リスクと対策
+
+| リスク | 対策 |
+|---|---|
+| C-1: Stop hook 8回 cap で「止まらない」が打ち切られる | 継続は native `/goal` に compose、Stop hook は eval veto のみ。v1 spike で cap スコープを実機確認 |
+| C-2: state 遷移がモデル依存に逆戻り（自己矛盾） | state は hook（CLI exit code 観測）が進める。モデルに `state set` を撃たせない |
+| C-3: steer が外れて skill が発火しない | state 遷移は CLI 委譲で決まるので steer 外れでも loop は壊れない。物理ブロックで steer 従命率を上げ、v1 で従命率を計測 |
+| H-1: design-gate が調査 Bash を誤 block | v1 は Bash を block しない（Edit/Write→source のみ）。plan/・.flywheel/・docs/・調査は pass |
+| loop-driver veto の無限ループでトークン焚き火 | veto 連続 cap（FR-10）+ done/人間待ちで停止（FR-9）|
+| o-m-cc 未インストールで動かない | SessionStart で依存検出、無ければ degrade（門だけ効かせ skill は手動案内）|
+| state file 破損で門が永久に閉じる | `flywheel reset` + `FLYWHEEL_OFF=1` の二重脱出口（FR-10）|
+| o-m-cc 側の skill 名・bin パス変更で委譲が壊れる | 委譲先を委譲表1箇所に集約。check-consistency 的な疎結合検証を将来追加 |
+
+## o-m-cc との境界（再掲・FR-8）
+
+flywheel = **loop を強制し steer する harness**（hook・state・gate）。
+o-m-cc = **撃つべき仕事の中身**（skill・agent・判断知）。
+flywheel は o-m-cc を**呼ぶ**。置き換えない。両者は `kok1eee` marketplace に並ぶ別プラグインで、flywheel は o-m-cc を soft dependency とする。

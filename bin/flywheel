@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# flywheel — Sensors-first loop engine の CLI。
+# state machine を起動・観測・リセットする。state 遷移ロジックは hooks/lib/common.sh に集約。
+#
+# 注意: `state set` / `_advance` は hook 内部用。auto mode でモデルに撃たせない（C-2 の自己矛盾回避）。
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../hooks/lib/common.sh
+source "$SCRIPT_DIR/../hooks/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+flywheel — Sensors-first loop engine
+
+Usage:
+  flywheel start "<適当prompt>" [--eval "<ty/ruff/testコマンド>"] [--no-polish]
+        ① goal を記録し設計フェーズ(designing)を開始。実装ゲートが閉じる。
+        --eval: 品質チェック(例 "ty check && ruff check && pytest")。--no-polish: simplify steer を無効化
+  flywheel status            現在の phase / goal / eval_cmd / 遷移履歴を表示
+  flywheel get <jq-filter>   state.json を jq で読む（hook 内部用）
+  flywheel reset             state を破棄して dormant に戻す（門が開く）
+  flywheel add "<goal>" [--eval ..][--no-polish]   backlog に goal を追加
+  flywheel list              backlog 一覧
+  flywheel next              dormant/done のとき backlog 先頭を pop して start
+  flywheel _advance <to> <by>  phase 遷移（hook 内部用。手動使用は非推奨）
+
+フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
+門の一時無効化: FLYWHEEL_OFF=1
+EOF
+}
+
+# goal 系コマンド（start/add）の共通フラグ解析 → PARSED_GOAL/PARSED_EVAL/PARSED_POLISH
+_parse_goal_args() {
+  PARSED_GOAL=""; PARSED_EVAL=""; PARSED_POLISH="true"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --eval) PARSED_EVAL="${2:-}"; shift 2 ;;
+      --no-polish) PARSED_POLISH="false"; shift ;;
+      *) PARSED_GOAL="$1"; shift ;;
+    esac
+  done
+}
+
+# goal を起動（start/next 共通）。前回 plan を退避してから state を初期化。
+_start_goal() {  # $1 goal, $2 eval_cmd, $3 polish
+  fw_archive_plan >/dev/null   # FR-12: 前回の未完了/完了 plan を退避（無ければ no-op）
+  fw_init "$1" "$2" "$3"
+  echo "🎯 flywheel 開始: phase=designing"
+  echo "   goal: $1"
+  [[ -n "$2" ]] && echo "   eval_cmd: $2"
+  echo "   polish: $3（実装後に simplify を steer）"
+  echo ""
+  echo "→ 実装ツール(source への Edit/Write)は今ブロックされています。"
+  echo "→ 先に plan/design.md を書いてください（grill で叩く）。"
+  echo "→ design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。"
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  start)
+    _parse_goal_args "$@"
+    [[ -z "$PARSED_GOAL" ]] && { echo "flywheel start: goal（適当prompt）が必要" >&2; exit 1; }
+    _start_goal "$PARSED_GOAL" "$PARSED_EVAL" "$PARSED_POLISH"
+    ;;
+  add)
+    _parse_goal_args "$@"
+    [[ -z "$PARSED_GOAL" ]] && { echo "flywheel add: goal が必要" >&2; exit 1; }
+    mkdir -p "$FW_DIR"
+    jq -cn --arg g "$PARSED_GOAL" --arg e "$PARSED_EVAL" --argjson p "$PARSED_POLISH" \
+      '{goal:$g, eval_cmd:$e, polish:$p}' >> "$FW_BACKLOG"
+    echo "📋 backlog に追加（残 $(fw_backlog_count) 件）: $PARSED_GOAL"
+    ;;
+  list)
+    [[ -s "$FW_BACKLOG" ]] || { echo "flywheel: backlog は空です"; exit 0; }
+    n=0
+    while IFS= read -r line; do
+      n=$((n + 1))
+      g="$(printf '%s' "$line" | jq -r '.goal')"
+      e="$(printf '%s' "$line" | jq -r '.eval_cmd // "-"')"
+      echo "$n. $g  [eval: $e]"
+    done < "$FW_BACKLOG"
+    ;;
+  next)
+    if fw_state_exists && [[ "$(fw_phase)" != "done" ]]; then
+      echo "flywheel: goal 進行中（phase=$(fw_phase)）。完了 or 'flywheel reset' してから next を。" >&2
+      exit 1
+    fi
+    [[ -s "$FW_BACKLOG" ]] || { echo "flywheel: backlog は空です"; exit 0; }
+    first="$(head -1 "$FW_BACKLOG")"
+    tail -n +2 "$FW_BACKLOG" > "$FW_BACKLOG.tmp" && mv "$FW_BACKLOG.tmp" "$FW_BACKLOG"
+    g="$(printf '%s' "$first" | jq -r '.goal')"
+    e="$(printf '%s' "$first" | jq -r '.eval_cmd // ""')"
+    p="$(printf '%s' "$first" | jq -r 'if .polish == false then "false" else "true" end')"
+    echo "▶️ backlog から次の goal を起動（残 $(fw_backlog_count) 件）"
+    _start_goal "$g" "$e" "$p"
+    ;;
+  status)
+    if ! fw_state_exists; then echo "flywheel: dormant（state なし。門は開いている）"; exit 0; fi
+    echo "phase   : $(fw_phase)"
+    echo "goal    : $(fw_get '.goal')"
+    echo "eval_cmd: $(fw_get '.eval_cmd')"
+    echo "polish  : $(fw_get '.polish')"
+    echo "veto    : $(fw_get '.veto_count')"
+    echo "history :"
+    jq -r '.history[] | "  \(.ts)  \(.from) → \(.to)  [\(.by)]"' "$FW_STATE" 2>/dev/null || true
+    ;;
+  get)
+    [[ $# -lt 1 ]] && { echo "flywheel get: jq filter が必要" >&2; exit 1; }
+    fw_get "$1"
+    ;;
+  reset)
+    rm -f "$FW_STATE"
+    echo "flywheel: reset 完了（dormant に戻った。門は開いている）"
+    ;;
+  _advance)
+    [[ $# -lt 2 ]] && { echo "flywheel _advance <to> <by>" >&2; exit 1; }
+    fw_advance "$1" "$2"
+    ;;
+  ""|-h|--help|help) usage ;;
+  *) echo "flywheel: 不明なコマンド '$cmd'" >&2; usage; exit 1 ;;
+esac
