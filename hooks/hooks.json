@@ -1,6 +1,18 @@
 {
-  "description": "flywheel hooks — Sensors-first loop engine (design-gate + design-validator + loop-driver)",
+  "description": "flywheel hooks — Sensors-first loop engine (design-gate + design-validator + loop-driver + intent-router)",
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/intent-router.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write",

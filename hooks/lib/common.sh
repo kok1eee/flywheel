@@ -17,7 +17,14 @@ FW_STATE="$FW_DIR/state.json"
 FW_BACKLOG="$FW_DIR/backlog.jsonl"
 
 # プラグイン本体の root（common.sh は <plugin>/hooks/lib/common.sh）。FW_ROOT（作業対象リポ）とは別。
-FW_PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# set -u 下で BASH_SOURCE[0] 未設定の文脈でも落ちないようガード（hook は全セッションで発火するため）。
+_fw_src="${BASH_SOURCE[0]:-}"
+if [[ -n "$_fw_src" ]]; then
+  FW_PLUGIN_ROOT="$(cd "$(dirname "$_fw_src")/../.." && pwd)"
+else
+  FW_PLUGIN_ROOT="$FW_ROOT"
+fi
+unset _fw_src
 
 # 有効な phase（state machine のノード）
 FW_PHASES="no-spec designing spec-ready implementing polish eval done"
@@ -123,6 +130,27 @@ fw_archive_plan() {
 # backlog（FR-13）の残件数。
 fw_backlog_count() {
   [[ -f "$FW_BACKLOG" ]] && awk 'END{print NR+0}' "$FW_BACKLOG" || echo 0
+}
+
+# プロジェクトファイルから eval(test/lint/型)コマンドを自動検出（--eval 省略時に使う）。
+# 見つからなければ空（loop は degrade で stop 許可）。
+fw_detect_eval() {
+  local r="$FW_ROOT" cmd=""
+  if [[ -f "$r/pyproject.toml" || -f "$r/pytest.ini" || -f "$r/setup.cfg" ]]; then
+    grep -qE 'ruff' "$r/pyproject.toml" 2>/dev/null && cmd="ruff check"
+    if [[ -f "$r/pytest.ini" ]] || grep -q 'tool.pytest' "$r/pyproject.toml" 2>/dev/null || [[ -d "$r/tests" ]]; then
+      cmd="${cmd:+$cmd && }pytest"
+    fi
+  elif [[ -f "$r/package.json" ]]; then
+    grep -q '"typecheck"' "$r/package.json" 2>/dev/null && cmd="npm run typecheck"
+    grep -q '"lint"' "$r/package.json" 2>/dev/null && cmd="${cmd:+$cmd && }npm run lint"
+    grep -qE '"test"[[:space:]]*:' "$r/package.json" 2>/dev/null && cmd="${cmd:+$cmd && }npm test"
+  elif [[ -f "$r/Cargo.toml" ]]; then
+    cmd="cargo test"
+  elif [[ -f "$r/go.mod" ]]; then
+    cmd="go test ./..."
+  fi
+  printf '%s\n' "$cmd"
 }
 
 # --- hook 共通ヘルパー（重複排除） ---

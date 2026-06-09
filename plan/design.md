@@ -185,6 +185,19 @@ done で plan/ が空になるので、通常フローでは start 側の archiv
 
 **backlog（FR-13）**: `.flywheel/backlog.jsonl`（1行1 goal: `{goal, eval_cmd, polish}`）。`add` が append、`list` が表示、`next` が「dormant か done」を確認して先頭を pop → start。**cron は持たない**: 外側の定期実行は native `/loop`/`/schedule` に委譲。`done` 時 loop-driver が残数を stderr で通知し `flywheel next` を促す（auto-chain は /goal 完了セマンティクスが絡むため将来）。
 
+## 低摩擦入口（FR-14 / FR-15 / FR-16）
+
+`flywheel start "..." --eval "..."` を毎回打つ摩擦を3段で下げる。共通の土台は **FR-14 eval 自動検出**（`fw_detect_eval` がプロジェクトファイルから test/lint を推定、`_start_goal` が `--eval` 省略時に使う）。
+
+| 入口 | 機構 | 摩擦 |
+|---|---|---|
+| **FR-16 slash** | `commands/start.md` → `/flywheel:start <goal>` が `flywheel start` を実行 | CLI を打たず1コマンド（明示・安全）|
+| **FR-15 intent-router** | `hooks/intent-router.sh`（UserPromptSubmit）が build 意図を検知して auto-engage | 何も打たない（invisible）。ただし **opt-in `FLYWHEEL_AUTO=1`** |
+
+**intent-router の安全弁**（誤爆＝質問/些末で gate が閉じる事故の回避）:
+- opt-in 既定 off。除外パターン（質問・調査・説明）で engage しない。active 中は触らない。`flywheel reset`/`FLYWHEEL_OFF=1` で即解除。state 遷移は他 hook と同じく CLI 経由なので、誤 engage しても loop は壊れず reset で戻せる。
+- **完全 invisible の快適化には weight-scaling（些末タスクは設計ゲート即通過）が必要**（将来）。それまでは opt-in + 粗い engage 分類で運用し、誤爆率を実測して default 化を判断する。
+
 ## validate-plan パス規約（H-2 対策）
 
 o-m-cc の `bin/validate-plan` は `PLAN_DIR="plan"`（cwd 相対）固定。よって flywheel は **`plan/requirements.md` + `plan/design.md` 規約**に従う:

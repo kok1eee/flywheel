@@ -82,6 +82,20 @@ goal が `done` に達したとき、その `plan/requirements.md` + `plan/desig
 
 `done` 到達時、loop-driver は backlog 残数を通知して `flywheel next` を促す。**auto-chain（hook が次を自動起動）は native `/goal` の完了セマンティクスが絡むため将来**。これで「goal の山を順に消化」が cron なしで回る（内側ループ=goal→done は既存、外側=backlog 消化はこの薄い層）。
 
+### FR-14: eval 自動検出（低摩擦・v0.4.0）
+`flywheel start "<goal>"` で `--eval` を省略したとき、プロジェクトファイルから test/lint/型チェックコマンドを**自動検出**する: `pyproject.toml`/`pytest.ini`→`ruff check && pytest`、`package.json`→`npm run typecheck && lint && test`、`Cargo.toml`→`cargo test`、`go.mod`→`go test ./...`。検出できなければ空（degrade）。解決順は `--eval` > `.flywheel` 設定 > 自動検出 > 空。これで日常は `flywheel start "<goal>"` だけで済む。
+
+### FR-15: intent-router（invisible auto-engage・opt-in・v0.4.0）
+「使っていることを感じさせない」理想形。**UserPromptSubmit hook** が build 意図の強い prompt（実装して/作って/機能追加 等）を検知し、flywheel が dormant なら自動で `flywheel start`（eval 自動検出付き）する。誤爆（質問・調査・些末修正で gate が閉じる）を避けるため:
+- **opt-in `FLYWHEEL_AUTO=1` のときだけ**動く（既定 off。default 化は誤爆率を実測してから）
+- 質問・調査・説明依頼は engage しない（除外パターン）
+- 既に active なら触らない / 不要なら `flywheel reset`・`FLYWHEEL_OFF=1` で即解除
+
+完全 invisible が快適になるには「些末タスクは設計ゲートを即通過」する weight-scaling が要る（将来）。現状は engage 分類で粗く weight を見る。
+
+### FR-16: slash command 定型化（v0.4.0）
+`/flywheel:start <作りたいもの>` で `flywheel start`（eval 自動検出）を起動し、設計フェーズへ誘導する。CLI を打たず1コマンドで開始できる明示的入口（auto-engage を opt-in にしない派の受け皿）。
+
 ## 非スコープ
 
 - **o-m-cc の置き換え / 作り直し**: flywheel は driver であり、o-m-cc の skill・agent・state 層（atoms 等）・jj ルール・leak gate を再実装しない（FR-8）。両者は compose 関係。

@@ -43,13 +43,18 @@ _parse_goal_args() {
 }
 
 # goal を起動（start/next 共通）。前回 plan を退避してから state を初期化。
-_start_goal() {  # $1 goal, $2 eval_cmd, $3 polish
+_start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish
+  local goal="$1" eval_cmd="$2" polish="$3" detected=""
+  if [[ -z "$eval_cmd" ]]; then
+    eval_cmd="$(fw_detect_eval)"   # --eval 省略時はプロジェクトから検出
+    [[ -n "$eval_cmd" ]] && detected=" (自動検出)"
+  fi
   fw_archive_plan >/dev/null   # FR-12: 前回の未完了/完了 plan を退避（無ければ no-op）
-  fw_init "$1" "$2" "$3"
+  fw_init "$goal" "$eval_cmd" "$polish"
   echo "🎯 flywheel 開始: phase=designing"
-  echo "   goal: $1"
-  [[ -n "$2" ]] && echo "   eval_cmd: $2"
-  echo "   polish: $3（実装後に simplify を steer）"
+  echo "   goal: $goal"
+  if [[ -n "$eval_cmd" ]]; then echo "   eval_cmd: $eval_cmd$detected"; else echo "   eval_cmd: (なし — done は degrade で stop 許可。--eval で指定可)"; fi
+  echo "   polish: $polish（実装後に simplify を steer）"
   echo ""
   echo "→ 実装ツール(source への Edit/Write)は今ブロックされています。"
   echo "→ 先に plan/design.md を書いてください（grill で叩く）。"
