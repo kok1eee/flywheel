@@ -36,7 +36,7 @@ fw_state_exists() { [[ -f "$FW_STATE" ]]; }
 # null（=未設定）のみ空に落とし、false はそのまま "false" を返す。
 fw_get() {
   fw_state_exists || { printf '\n'; return; }
-  jq -r "$1 | if . == null then empty else . end" "$FW_STATE" 2>/dev/null || printf '\n'
+  jq -r "$1 | select(. != null)" "$FW_STATE" 2>/dev/null || printf '\n'
 }
 
 fw_phase() { fw_get '.phase'; }

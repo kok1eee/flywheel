@@ -19,9 +19,8 @@ fw_parse_tool_input "$INPUT"   # → FW_TOOL / FW_FP
 design_path="$(fw_get '.design_path')"
 [[ -n "$design_path" && "$FW_FP" == *"$design_path" ]] || exit 0
 
-# 設計フェーズ中だけ検証（spec-ready 以降は再検証不要）
-phase="$(fw_phase)"
-[[ "$phase" == "designing" || "$phase" == "no-spec" ]] || exit 0
+# 設計フェーズ中だけ検証（spec-ready 以降は再検証不要）。phase 述語は common.sh に集約。
+fw_gate_closed "$(fw_phase)" || exit 0
 
 emit_ctx() {  # PostToolUse の additionalContext でモデルに伝える
   jq -cn --arg c "$1" '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $c}}'
