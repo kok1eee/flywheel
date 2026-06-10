@@ -200,7 +200,7 @@ done で plan/ が空になるので、通常フローでは start 側の archiv
 
 | 入口 | 機構 | 摩擦 |
 |---|---|---|
-| **FR-17 greeter** | `hooks/session-greeter.sh`（SessionStart）が dormant 時に start の存在を1行案内 | 0コマンド・gate を閉じない（思い出させるだけ）|
+| **FR-17 greeter** | `hooks/session-greeter.sh`（SessionStart）が dormant 時は start の存在を案内、**active 時は phase/goal/次手を再アンカー**（compaction・resume で消えた context の復元、v0.4.3） | 0コマンド・gate を閉じない |
 | **FR-16 slash** | `commands/start.md` → `/flywheel:start <goal>` が `flywheel start` を実行 | CLI を打たず1コマンド（明示・安全）|
 | **FR-15 intent-router** | `hooks/intent-router.sh`（UserPromptSubmit）が build 意図を検知して auto-engage | 何も打たない（invisible）。ただし **opt-in `FLYWHEEL_AUTO=1`** |
 

@@ -106,6 +106,8 @@ flywheel が dormant（state なし＝門が開いている）なセッション
 
 「最初は start を使え」を強制（gate を閉じる）でなく示唆（案内）で伝える。常時 gate ON は質問・調査・他作業まで巻き込み誤爆地獄になるため**採らない**——摩擦低減の欲求は FR-15 auto-engage で満たす。
 
+**active 時の再アンカー（v0.4.3）**: goal 進行中のセッション開始（resume・compaction 復帰・新セッション）では、入口案内の代わりに**現在の phase / goal / 次にすべきこと**を context に注入する。state.json は context 非依存（FR-7）だが、モデル側の context は compaction で消えるため、SessionStart で再注入して数時間〜数日の長時間自律運転を支える（Fable 5 の長時間 context 保持を harness 側から補強）。designing なら設計ステップの steer（FR-2 のパイプライン案内）、implementing/polish/eval なら eval_cmd 込みの続行案内、done なら next/reset 案内を出す。
+
 ## 非スコープ
 
 - **o-m-cc の置き換え / 作り直し**: flywheel は driver であり、o-m-cc の skill・agent・state 層（atoms 等）・jj ルール・leak gate を再実装しない（FR-8）。両者は compose 関係。

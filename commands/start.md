@@ -13,4 +13,6 @@ flywheel を起動します（eval は自動検出。明示したいなら後で
 - 要件はあるなら `/flywheel:design`
 - 設計を叩くなら `/flywheel:grill`
 
-design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。以後は実装 → polish(simplify) → eval(自動検出した test/lint) → done まで自動で回ります。
+design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。以後は実装 → eval(自動検出した test/lint) → polish(simplify) → 再 eval → done まで自動で回ります。
+
+長時間の連続自律で回す場合は、native の `/goal` にもこの goal を張ってください（flywheel は eval veto と steer、`/goal` はターン継続を担当する compose 関係）。

@@ -84,6 +84,7 @@ if [[ "$rc" -eq 0 ]]; then
   fw_advance done "loop-driver: eval pass ($eval_cmd)"
   arch="$(fw_archive_plan)"   # FR-12: 完了スペックを退避（plan/ をクリーンに）
   echo "✅ flywheel: eval 合格（$eval_cmd）。goal 達成として done。" >&2
+  echo "   挙動エビデンスも残すなら: Skill: flywheel:verification（eval は静的判定のみ。実際に動かした証拠は別）" >&2
   [[ -n "$arch" ]] && echo "   設計を退避: ${arch#"$FW_ROOT"/}" >&2
   n="$(fw_backlog_count)"
   [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'flywheel next' で次を開始してください。" >&2

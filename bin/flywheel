@@ -59,6 +59,7 @@ _start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish
   echo "→ 実装ツール(source への Edit/Write)は今ブロックされています。"
   echo "→ 先に plan/design.md を書いてください（grill で叩く）。"
   echo "→ design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。"
+  echo "→ 連続自律で回すなら native の /goal も併用推奨（flywheel は eval veto と steer、/goal はターン継続を担当）。"
 }
 
 cmd="${1:-}"; shift || true
