@@ -50,11 +50,15 @@ no-spec ──①prompt(intent検知)──▶ designing ──┐
    │                                  ▼
    │                              spec-ready ══門開く（FR-1 解錠）══▶ implementing
    │                                                                      │
-   │                                          polish(simplify steer, FR-11)◀┘ 1ターン
-   │                                                  │
-   │  goal 達成(FR-6) ◀── eval ◀── eval-gate 判定(ty/ruff/test) ◀────────────┘
-   │       │ 達成                      │ 未達(FR-5)
-   │       ▼                           └─▶ implementing に戻る（loop）
+   │                              eval（eval-gate 判定 ty/ruff/test）◀─────┘
+   │                                  │ 未達(FR-5) ──▶ implementing に戻る（修正 loop。polish は挟まない）
+   │                                  │ 初回合格
+   │                                  ▼
+   │                              polish（simplify steer, FR-11・goal につき1回）
+   │                                  │
+   │  goal 達成(FR-6) ◀───────── 再 eval（simplify が壊していないか）
+   │       │ 合格                     │ 未達 ─▶ implementing（犯人は simplify と確定）
+   │       ▼
    └──── done
 ```
 
@@ -62,10 +66,10 @@ no-spec ──①prompt(intent検知)──▶ designing ──┐
 |---|---|---|---|
 | `no-spec` | **block** 実装ツール | — | まだ設計が無い |
 | `designing` | **block** 実装ツール | 設計 loop 継続 | 設計を立てて叩いている最中 |
-| `spec-ready` | **open** | — | validate 合格。実装に入れる |
+| `spec-ready` | **open** | 実装開始を steer（veto。空振り eval 防止） | validate 合格。実装に入れる |
 | `implementing` | open | **継続**（止めない） | 実装中 |
-| `polish` | open | simplify を steer して eval へ | 整理1ターン（FR-11、--polish 時のみ）|
-| `eval` | open | 未達なら継続 | 完了判定中（ty/ruff/test）|
+| `polish` | open | simplify を steer → 再 eval へ | 初回 eval 合格後の整理1ターン（FR-11・1回だけ）|
+| `eval` | open | 未達なら implementing へ veto | 完了判定中（ty/ruff/test）|
 | `done` | open | 停止許可 | goal 達成。loop 終了 |
 
 state は各 hook が読み、**hook（Sensor）が書く**。会話履歴に非依存（FR-7）。
@@ -80,7 +84,8 @@ state は各 hook が読み、**hook（Sensor）が書く**。会話履歴に非
 | `designing → spec-ready` | **design-validator**（PostToolUse, Write→plan/design.md） | design.md 書き込みを検知 → `validate-plan design` を自動実行 → 合格で遷移 |
 | `spec-ready → implementing` | **design-gate**（PreToolUse, 最初の source 編集を許可した瞬間） | 門が開いて最初の実装編集が通った → implementing へ |
 | `implementing → eval` | **loop-driver**（Stop） | モデルが turn を終えようとした → eval phase へ送り eval-gate 起動 |
-| `eval → done / implementing` | **loop-driver + eval-gate**（Stop） | eval 基準を CLI で判定 → 達成で done、未達で implementing に戻す |
+| `eval → polish` | **loop-driver**（Stop, 初回 eval 合格時） | green を観測 → simplify を steer（`polished` フラグで goal につき1回だけ） |
+| `eval → done / implementing` | **loop-driver + eval-gate**（Stop） | eval 基準を CLI で判定 → polish 済みで合格なら done、未達で implementing に戻す |
 
 CLI（validate-plan / test / build）は hook が**直接実行**できる。skill（design/grill/critic/sisyphus/verification）は hook が**直接呼べない**ので exit 2 + steer メッセージでモデルに撃たせる（下記「compose の2系統」）。どちらも state 遷移自体は hook が書くので、モデルの撃ち損ねは state を壊さない。
 
@@ -91,6 +96,7 @@ CLI（validate-plan / test / build）は hook が**直接実行**できる。ski
 2. phase が `no-spec`/`designing` のとき、ツール使用が**実装意図**か判定:
    - **v1: Edit/Write の対象が plan/ ・ .flywheel/ ・ docs/ ・ README 以外（= source）→ 実装意図 として block**
    - **v1: Bash は常に pass**（H-1: `pytest` と `python analyze.py` を正規表現で安定区別できない。過検知で bypass 常態化 or 未検知で素通り、どちらも価値命題を壊す。Bash の実装意図判定は精度を上げてから v2 で導入）
+   - **リポ外（FW_ROOT 外: /tmp 等）への書き込みは実装意図とみなさない**（設計フェーズの調査スクラッチを塞がない・v0.4.2）
    - それ以外（調査 grep、plan/ への書き込み等）→ pass
 3. 実装意図 ×（`no-spec`/`designing`）→ **exit 2 + steer**: 「設計フェーズ未完了。先に `plan/design.md` を書き `validate-plan` を通せ。bypass は FLYWHEEL_OFF=1」
 4. `FLYWHEEL_OFF=1` なら全 pass（FR-10）。
@@ -130,13 +136,16 @@ loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し e
   - Python: `ty check && ruff check && pytest`
   - TS/JS: `npm run typecheck && npm run lint && npm test`
 - **v2 以降: 挙動検証**（runnable な変更は native run/verify/webapp-testing で起動・観測。o-m-cc verification 挙動ゲート v0.63.0）。LLM 判定を含むので決定論段とは分けて段階導入。
+- **実行環境の頑健化（v0.4.2）**: eval は `timeout`（既定 540s、`FLYWHEEL_EVAL_TIMEOUT`）で自前打ち切り → hook timeout（600s）に殺されて「判定なしで stop が通る」silent degrade を、明示メッセージ付きの veto に変換する。mise shims ディレクトリがあれば PATH に前置し、非対話 hook 環境で npm/node 等が解決できず eval が常に fail する事故を防ぐ。
 
-### polish-gate（FR-11・v0.2.0）
-eval の前段。loop-driver が `implementing`→`polish` 遷移時に `Skill: simplify` を steer（exit 2 でモデルに整理の1ターンを与える）。次の Stop で `polish`→`eval` に進む。polish は LLM 整理（Skill steering、非決定論）で、eval（CLI・決定論）と役割が分かれる:
-- **polish**: simplify = 書いた直後の reuse/simplification/efficiency/altitude を潰す
-- **eval**: ty/ruff/test = 型・lint・テストの機械判定
+### polish-gate（FR-11・v0.2.0、v0.4.2 で eval 後に移動 = polish-on-green）
+**初回 eval 合格後・done 確定の前**に1回だけ。loop-driver が eval pass を観測したとき `polished` が未セットなら `polish` へ遷移 + `Skill: simplify` を steer（exit 2 でモデルに整理の1ターンを与える）。次の Stop で再 eval し、通れば done。旧配置（implementing→polish→eval）は修正ループ毎に polish が再発火して turn が倍掛かり・red なコードを磨いていたため、v0.4.2 で「make it work, then make it right」の順に改めた（詳細は FR-11）。役割分担:
+- **polish**: simplify = reuse/simplification/efficiency/altitude を潰す（LLM / steer / 非決定論）
+- **eval**: ty/ruff/test = 型・lint・テストの機械判定（CLI / 決定論）
 
-`flywheel start --no-polish` で polish 段を飛ばせる（state の `polish:false`）。
+`flywheel start --no-polish` で polish 段を飛ばせる（state の `polish:false`）。eval_cmd 未設定の degrade 時も polish は1回挿入してから stop を許可する。
+
+**spec-ready 停止の扱い（v0.4.2）**: 門が開いた直後にモデルが source を1度も編集せず停止した場合、eval を回すと「未実装でも既存テストは green」で**空振り done** になり得る。よって spec-ready での停止は eval を回さず「実装を開始せよ」と steer して veto する（cap で暴走防止）。既知の縁: Bash だけで完結する goal は design-gate が実装開始を観測できず（H-1 と同根）spec-ready に留まり cap まで veto される — その場合は FLYWHEEL_OFF=1 で逃がす。
 
 ## compose の2系統（hook は skill を呼べない・C-3 対策）
 

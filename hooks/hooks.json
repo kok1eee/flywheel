@@ -27,7 +27,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
@@ -56,7 +56,7 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/loop-driver.sh",
-            "timeout": 120000
+            "timeout": 600000
           }
         ]
       }

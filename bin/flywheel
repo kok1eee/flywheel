@@ -105,7 +105,7 @@ case "$cmd" in
     echo "phase   : $(fw_phase)"
     echo "goal    : $(fw_get '.goal')"
     echo "eval_cmd: $(fw_get '.eval_cmd')"
-    echo "polish  : $(fw_get '.polish')"
+    echo "polish  : $(fw_get '.polish')（実施済: $(fw_get '.polished')）"
     echo "veto    : $(fw_get '.veto_count')"
     echo "history :"
     jq -r '.history[] | "  \(.ts)  \(.from) → \(.to)  [\(.by)]"' "$FW_STATE" 2>/dev/null || true

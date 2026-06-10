@@ -41,15 +41,8 @@ fw_get() {
 
 fw_phase() { fw_get '.phase'; }
 
-# 文字列フィールドを設定
-fw_set() {
-  fw_state_exists || return 1
-  local tmp; tmp="$(mktemp)"
-  jq --arg k "$1" --arg v "$2" 'setpath([$k]; $v)' "$FW_STATE" > "$tmp" && mv "$tmp" "$FW_STATE"
-}
-
-# 数値フィールドを設定
-fw_set_num() {
+# 数値/真偽値フィールドを設定（値は JSON リテラルとして渡す）
+fw_set_json() {
   fw_state_exists || return 1
   local tmp; tmp="$(mktemp)"
   jq --arg k "$1" --argjson v "$2" 'setpath([$k]; $v)' "$FW_STATE" > "$tmp" && mv "$tmp" "$FW_STATE"
@@ -74,7 +67,7 @@ fw_init() {
   local goal="$1" eval_cmd="${2:-}" polish="${3:-true}"
   mkdir -p "$FW_DIR"
   jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, polish:$polish, veto_count:0,
+    '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, polish:$polish, polished:false, veto_count:0,
       history:[{ts:$ts, from:"no-spec", to:"designing", by:"flywheel start"}]}' \
     > "$FW_STATE"
 }
@@ -105,9 +98,10 @@ fw_is_impl_write() {
   # リポ root 相対に正規化
   fp="${fp#"$FW_ROOT"/}"
   case "$fp" in
+    /*)                        return 1 ;;   # FW_ROOT 外（/tmp 等。prefix が剥けず絶対パスのまま）→ 調査スクラッチとして許可
     plan/*|.flywheel/*|docs/*) return 1 ;;   # 設計・状態・文書 → 許可
     *.md|*.markdown)           return 1 ;;   # markdown は許可（README 等）
-    *)                         return 0 ;;   # それ以外（source）→ 実装意図
+    *)                         return 0 ;;   # それ以外（リポ内 source）→ 実装意図
   esac
 }
 
@@ -163,11 +157,11 @@ fw_hook_guard() {
   return 0
 }
 
-# PreToolUse/PostToolUse の入力 JSON から tool_name と file_path を1回の jq で抽出し
-# FW_TOOL / FW_FP にセットする（フィールド毎に jq を fork しない）。
+# PreToolUse/PostToolUse の入力 JSON から tool_name と file_path（NotebookEdit は
+# notebook_path）を1回の jq で抽出し FW_TOOL / FW_FP にセットする（フィールド毎に fork しない）。
 fw_parse_tool_input() {
   IFS=$'\t' read -r FW_TOOL FW_FP < <(
-    printf '%s' "$1" | jq -r '[.tool_name // "", .tool_input.file_path // ""] | @tsv'
+    printf '%s' "$1" | jq -r '[.tool_name // "", .tool_input.file_path // .tool_input.notebook_path // ""] | @tsv'
   ) || { FW_TOOL=""; FW_FP=""; }
 }
 

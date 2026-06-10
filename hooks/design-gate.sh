@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# design-gate (PreToolUse, matcher: Edit|Write) — FR-1
+# design-gate (PreToolUse, matcher: Edit|Write|NotebookEdit) — FR-1
 # 設計が validate を通る前は、source への実装書き込みを物理ブロックする。
 # spec-ready で最初の source 編集が通った瞬間 implementing へ遷移させる（phase-advancer の一部）。
 #
 # v1: Bash は block しない（H-1: pytest と調査スクリプトを正規表現で安定区別できない）。
-#     block 対象は Edit/Write→source のみ。plan/ .flywheel/ docs/ *.md は常に許可。
+#     block 対象は Edit/Write/NotebookEdit→source のみ。plan/ .flywheel/ docs/ *.md は常に許可。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,8 +16,8 @@ INPUT="$(cat)"
 fw_parse_tool_input "$INPUT"   # → FW_TOOL / FW_FP
 phase="$(fw_phase)"
 
-# source への実装書き込みか（Edit/Write かつ非設計ファイル）
-impl_write() { [[ "$FW_TOOL" == "Edit" || "$FW_TOOL" == "Write" ]] && fw_is_impl_write "$FW_FP"; }
+# source への実装書き込みか（Edit/Write/NotebookEdit かつ非設計ファイル）
+impl_write() { [[ "$FW_TOOL" == "Edit" || "$FW_TOOL" == "Write" || "$FW_TOOL" == "NotebookEdit" ]] && fw_is_impl_write "$FW_FP"; }
 
 if fw_gate_closed "$phase"; then
   # 設計フェーズ。source への実装書き込みだけブロックする。
