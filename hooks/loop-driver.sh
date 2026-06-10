@@ -46,6 +46,7 @@ bump_veto_or_handoff() {
 enter_polish() {  # $1 = steer メッセージの冒頭文脈
   fw_set_json polished true
   fw_advance polish "loop-driver: enter polish (simplify)"
+  fw_log_usage "steer:simplify"   # FR-18: steer 従命率の分母
   echo "$1 Skill: simplify でコードを整理してください（polish: reuse/簡素化/効率/altitude）。次の停止で再度品質チェックし、通れば done です。" >&2
   exit 2
 }
@@ -85,6 +86,7 @@ if [[ "$rc" -eq 0 ]]; then
   arch="$(fw_archive_plan)"   # FR-12: 完了スペックを退避（plan/ をクリーンに）
   echo "✅ flywheel: eval 合格（$eval_cmd）。goal 達成として done。" >&2
   echo "   挙動エビデンスも残すなら: Skill: flywheel:verification（eval は静的判定のみ。実際に動かした証拠は別）" >&2
+  fw_log_usage "steer:verification"   # FR-18: steer 従命率の分母
   [[ -n "$arch" ]] && echo "   設計を退避: ${arch#"$FW_ROOT"/}" >&2
   n="$(fw_backlog_count)"
   [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'flywheel next' で次を開始してください。" >&2

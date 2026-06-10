@@ -106,6 +106,12 @@ flywheel が dormant（state なし＝門が開いている）なセッション
 
 「最初は start を使え」を強制（gate を閉じる）でなく示唆（案内）で伝える。常時 gate ON は質問・調査・他作業まで巻き込み誤爆地獄になるため**採らない**——摩擦低減の欲求は FR-15 auto-engage で満たす。
 
+### FR-18: スキル使用と steer の計測（v0.4.4）
+PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:
+- (a) **evolve の入力が実配線される** — 従来 skill-usage.csv の書き手が無く、evolve は常に空データで動いていた
+- (b) **steer 従命率が測れる** — 「steer 行の後に対応する skill 行が現れた率」。design.md の dogfood 宿題（compose の2系統）の実装
+- (c) 人気 / 過少トリガー skill を把握できる（Anthropic skills blog の practice「スキルの計測」）
+
 **active 時の再アンカー（v0.4.3）**: goal 進行中のセッション開始（resume・compaction 復帰・新セッション）では、入口案内の代わりに**現在の phase / goal / 次にすべきこと**を context に注入する。state.json は context 非依存（FR-7）だが、モデル側の context は compaction で消えるため、SessionStart で再注入して数時間〜数日の長時間自律運転を支える（Fable 5 の長時間 context 保持を harness 側から補強）。designing なら設計ステップの steer（FR-2 のパイプライン案内）、implementing/polish/eval なら eval_cmd 込みの続行案内、done なら next/reset 案内を出す。
 
 ## 非スコープ

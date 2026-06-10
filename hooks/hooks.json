@@ -1,5 +1,5 @@
 {
-  "description": "flywheel hooks — Sensors-first loop engine (session-greeter + design-gate + design-validator + loop-driver + intent-router)",
+  "description": "flywheel hooks — Sensors-first loop engine (session-greeter + design-gate + design-validator + loop-driver + intent-router + skill-logger)",
   "hooks": {
     "SessionStart": [
       {
@@ -32,6 +32,16 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-gate.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/skill-logger.sh",
             "timeout": 5000
           }
         ]

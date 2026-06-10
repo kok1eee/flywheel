@@ -145,6 +145,9 @@ loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し e
 
 `flywheel start --no-polish` で polish 段を飛ばせる（state の `polish:false`）。eval_cmd 未設定の degrade 時も polish は1回挿入してから stop を許可する。
 
+### skill-logger（PreToolUse, matcher: Skill）— FR-18
+全 Skill 使用を `${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}/skill-usage.csv` に記録する（観測のみ・常に exit 0・dormant でも動く）。design-gate（設計 steer）と loop-driver（polish / verification steer）は同じ CSV に `steer:<種別>` 行を記録するので、**steer 従命率 = steer 行の直後に対応 skill 行が現れた率**を dogfood で集計できる。evolve はこの CSV を「最近使われたスキル」の入力として読む（steer:* 行は除外）。
+
 **spec-ready 停止の扱い（v0.4.2）**: 門が開いた直後にモデルが source を1度も編集せず停止した場合、eval を回すと「未実装でも既存テストは green」で**空振り done** になり得る。よって spec-ready での停止は eval を回さず「実装を開始せよ」と steer して veto する（cap で暴走防止）。既知の縁: Bash だけで完結する goal は design-gate が実装開始を観測できず（H-1 と同根）spec-ready に留まり cap まで veto される — その場合は FLYWHEEL_OFF=1 で逃がす。
 
 ## compose の2系統（hook は skill を呼べない・C-3 対策）
@@ -158,7 +161,7 @@ loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し e
 
 **重要**: Skill steering は prose 誘導と同じ構造で、Opus 4.7+ が確実に撃つ保証はない。flywheel が o-m-cc より強いのは、**物理ブロック（design-gate）と組み合わせて選択肢を絞る**点: 「他の実装ツールは全て block されている。今できるのは設計を書くことだけ」という状況を作れば、steer の従命率は prose 単独より大幅に上がる。ただし state 遷移自体は CLI 委譲（hook が validate-plan の exit code を読む）で決まるので、**Skill steering が外れても state は壊れない**（C-2 と C-3 の合わせ技で安全性を担保）。
 
-> v1 dogfood で **steer 従命率を計測・記録**する（steer を出した回数 / モデルが実際に該当 skill を撃った回数）。これが低ければ steer メッセージの一意性を上げる or 物理ブロックの範囲を調整する。
+> v1 dogfood で **steer 従命率を計測・記録**する（steer を出した回数 / モデルが実際に該当 skill を撃った回数）。これが低ければ steer メッセージの一意性を上げる or 物理ブロックの範囲を調整する。**v0.4.4 で計測基盤を実装済み**（FR-18 skill-logger: steer 発行と Skill 使用が同じ CSV に並ぶ）。
 
 ## フェーズ別 o-m-cc 委譲表（FR-8 / compose）
 

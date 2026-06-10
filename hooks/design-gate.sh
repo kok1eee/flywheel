@@ -32,6 +32,7 @@ if fw_gate_closed "$phase"; then
       echo ""
       echo "bypass: FLYWHEEL_OFF=1 / 中止: flywheel reset"
     } >&2
+    fw_log_usage "steer:designing"   # FR-18: steer 従命率の分母
     exit 2
   fi
   exit 0  # plan/ への書き込み・調査等は許可

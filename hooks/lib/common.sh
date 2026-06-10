@@ -188,6 +188,16 @@ EOF
   fi
 }
 
+# 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、
+# 失敗しても本処理を妨げない。置き場は plugin データ領域（evolve がここを読む）。
+fw_log_usage() {
+  local d="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/flywheel-data}" csv
+  mkdir -p "$d" 2>/dev/null || return 0
+  csv="$d/skill-usage.csv"
+  [[ -f "$csv" ]] || echo "timestamp,skill" > "$csv" 2>/dev/null || return 0
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),$1" >> "$csv" 2>/dev/null || true
+}
+
 # phase 述語（phase の意味論を1箇所に集約。各 hook は case 文を持たない）。
 fw_gate_closed() { case "$1" in no-spec|designing) return 0 ;; *) return 1 ;; esac; }   # 実装ブロック中
 fw_work_active() { case "$1" in spec-ready|implementing|polish|eval) return 0 ;; *) return 1 ;; esac; }  # loop が回すべき作業中 phase
