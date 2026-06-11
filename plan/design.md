@@ -145,6 +145,8 @@ loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し e
 
 `flywheel start --no-polish` で polish 段を飛ばせる（state の `polish:false`）。eval_cmd 未設定の degrade 時も polish は1回挿入してから stop を許可する。
 
+**diff 適応（FR-20・v0.4.6）**: `should_polish` が goal の累積 diff（`fw_goal_diff_lines`: state の `baseline_rev` からの insertions+deletions）を見て、`FLYWHEEL_POLISH_MIN_DIFF`（既定 30）未満なら polish を skip して即 done。baseline は start 時に `fw_baseline_rev` が記録（jj `@-` / git HEAD）。累積なので途中 commit に影響されない。pure git では未 track 新規ファイルが diff --stat に乗らないため `git ls-files --others` の行数を加算する（新機能はたいてい新規ファイル——落とすと polish が常に skip になる）。jj は snapshot されるので diff --from だけで正確。計測不能時は常に polish（degrade）。
+
 ### skill-logger（PreToolUse, matcher: Skill）— FR-18
 全 Skill 使用を `${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}/skill-usage.csv` に記録する（観測のみ・常に exit 0・dormant でも動く）。design-gate（設計 steer）と loop-driver（polish / verification steer）は同じ CSV に `steer:<種別>` 行を記録するので、**steer 従命率 = steer 行の直後に対応 skill 行が現れた率**を dogfood で集計できる。evolve はこの CSV を「最近使われたスキル」の入力として読む（steer:* 行は除外）。
 

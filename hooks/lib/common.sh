@@ -68,6 +68,50 @@ fw_advance() {
     "$FW_STATE" > "$tmp" && mv "$tmp" "$FW_STATE"
 }
 
+# goal 開始時点の基準 revision（FR-20: goal の累積 diff の起点）。
+# jj: @ の親（運用ルール上 start 前に `jj new` するので @ は空 = 親が開始時点。
+#     @ 自身の commit_id は snapshot ごとに変わるため使えない）
+# git: HEAD。どちらも無ければ空（degrade: diff 適応は無効で常に polish）。
+fw_baseline_rev() {
+  local r
+  if r=$(cd "$FW_ROOT" && jj log -r '@-' --no-graph -T 'commit_id ++ "\n"' 2>/dev/null | head -1) && [[ -n "$r" ]]; then
+    printf '%s\n' "$r"; return
+  fi
+  if r=$(cd "$FW_ROOT" && git rev-parse HEAD 2>/dev/null); then printf '%s\n' "$r"; return; fi
+  printf '\n'
+}
+
+# baseline からの累積「実装」変更行数を出力（FR-20）。
+# - 累積: 途中で commit / push しても測れる（working copy だけだと commit ごとにゼロ
+#   リセットされ「細かく push すると polish が常に skip」になる）
+# - 実装のみ: per-file stat 行を fw_is_impl_write（gate と同じ判定）でフィルタし、
+#   .flywheel/（state 自身）・plan/（spec）・docs/・*.md を計測から除外する
+# - pure git は未 track 新規ファイルが diff --stat に乗らないため別途加算する
+#   （新機能はたいてい新規ファイル。落とすと polish が常に skip になる）。jj は snapshot されるので不要
+# baseline 無し・diff 取得失敗は空（呼び出し側が degrade 判断）。
+fw_goal_diff_lines() {
+  local base out f n total=0
+  base="$(fw_get '.baseline_rev')"
+  [[ -z "$base" ]] && { printf '\n'; return; }
+  if ! out=$(cd "$FW_ROOT" && jj diff --from "$base" --stat 2>/dev/null); then
+    out=$(cd "$FW_ROOT" && git diff --stat "$base" 2>/dev/null) || { printf '\n'; return; }
+    while IFS= read -r f; do
+      fw_is_impl_write "$f" || continue
+      n=$(wc -l < "$FW_ROOT/$f" 2>/dev/null) || n=0
+      total=$((total + n))
+    done < <(cd "$FW_ROOT" && git ls-files --others --exclude-standard 2>/dev/null)
+  fi
+  # per-file 行（"path | N +-…"）だけ合算。summary 行（"N files changed…"）は '|' が無く skip される
+  while IFS='|' read -r f n; do
+    [[ -z "$n" ]] && continue
+    f="${f#"${f%%[![:space:]]*}"}"; f="${f%"${f##*[![:space:]]}"}"   # 前後の空白を trim
+    fw_is_impl_write "$f" || continue
+    n="${n//[^0-9]/}"
+    total=$((total + ${n:-0}))
+  done <<< "$out"
+  printf '%s\n' "$total"
+}
+
 # state を初期化（flywheel start）。goal を記録し designing から開始。
 # polish: "true"/"false"（FR-11、実装後 eval 前に simplify を steer するか）
 # eval_src: eval_cmd の出所 "explicit"（--eval 明示）/ "auto"（自動検出）/ ""（なし）。
@@ -75,8 +119,10 @@ fw_advance() {
 fw_init() {
   local goal="$1" eval_cmd="${2:-}" polish="${3:-true}" eval_src="${4:-}"
   mkdir -p "$FW_DIR"
-  jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg src "$eval_src" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg src "$eval_src" \
+    --arg base "$(fw_baseline_rev)" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, eval_src:$src, polish:$polish, polished:false, veto_count:0,
+      baseline_rev:$base,
       history:[{ts:$ts, from:"no-spec", to:"designing", by:"flywheel start"}]}' \
     > "$FW_STATE"
 }

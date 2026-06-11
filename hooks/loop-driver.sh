@@ -51,6 +51,21 @@ enter_polish() {  # $1 = steer メッセージの冒頭文脈
   exit 2
 }
 
+# polish を実施すべきか（FR-11 + FR-20 の diff 適応）。
+# polish=true・未実施で、goal の累積 diff が閾値以上のときだけ 0 を返す。
+# 小 diff の goal（typo 修正等）は simplify 1ターンが過剰なので skip して即 done へ。
+should_polish() {
+  [[ "$polish" == "true" && "$polished" != "true" ]] || return 1
+  local min="${FLYWHEEL_POLISH_MIN_DIFF:-30}" n
+  n="$(fw_goal_diff_lines)"
+  if [[ -n "$n" && "$n" -lt "$min" ]]; then
+    fw_set_json polished true   # skip も実施判断済みとして記録（再判定しない）
+    echo "ℹ️ flywheel: goal の累積 diff が ${n} 行（閾値 ${min} 未満・FLYWHEEL_POLISH_MIN_DIFF）のため polish を省略します。" >&2
+    return 1
+  fi
+  return 0   # diff が大きい or 計測不能（baseline なし）→ 従来どおり polish
+}
+
 # spec-ready のまま停止 = 門が開いたのに source 編集ゼロ。eval を回すと「未実装でも既存
 # テストは green」で空振り done になり得るため、回さず実装開始を steer する（veto で cap 保護）。
 # 既知の縁: Bash だけで完結する goal はここに留まる（H-1 と同根）→ FLYWHEEL_OFF=1 で逃がす。
@@ -62,7 +77,7 @@ fi
 
 # eval_cmd 未設定 → 決定論判定できない。polish だけ1回挿入し、stop は許可（無限ブロックを避ける）。
 if [[ -z "$eval_cmd" ]]; then
-  [[ "$polish" == "true" && "$polished" != "true" ]] && enter_polish "🪄 flywheel: 実装が一段落。"
+  should_polish && enter_polish "🪄 flywheel: 実装が一段落。"
   echo "⚠️ flywheel: eval_cmd 未設定のため done を機械判定できません。'flywheel start --eval \"<ty/ruff/test>\"' で設定すると loop が完了を強制します。今回は stop を許可します。" >&2
   exit 0
 fi
@@ -81,7 +96,7 @@ $out"
 if [[ "$rc" -eq 0 ]]; then
   fw_set_json veto_count 0
   # 初回合格 → done の前に polish を1回（green を確認してから磨く = polish-on-green）
-  [[ "$polish" == "true" && "$polished" != "true" ]] && enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
+  should_polish && enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
   fw_advance done "loop-driver: eval pass ($eval_cmd)"
   arch="$(fw_archive_plan)"   # FR-12: 完了スペックを退避（plan/ をクリーンに）
   echo "✅ flywheel: eval 合格（$eval_cmd）。goal 達成として done。" >&2

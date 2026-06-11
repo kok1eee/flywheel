@@ -116,6 +116,14 @@ FR-6 の「完了判定は設計の受け入れ基準に照合する」を文字
 
 これで「AI が完了条件を設計する（メタプロンプトの本質）+ 判定は CLI の exit code（自己評価バイアスの排除）」が両立する。
 
+### FR-20: polish の diff 適応スケーリング（v0.4.6）
+polish（FR-11）を goal の規模に適応させる。`flywheel start` 時に **baseline revision**（jj は `@` の親 / git は HEAD）を state に記録し、初回 eval 合格時に **baseline からの累積変更行数**を計測。閾値（既定 30 行・`FLYWHEEL_POLISH_MIN_DIFF`）未満なら polish を省略して即 done へ（typo 修正級の goal に simplify 1ターンは過剰）。
+
+- **累積 diff** なので goal 中に細かく commit / push しても測れる（working copy の diff だけだと commit ごとにゼロリセットされ常に skip になる）
+- baseline が取れない（VCS なし）・diff 計測失敗 → 従来どおり polish（degrade）
+- skip も「実施判断済み」として `polished` に記録（再判定しない）
+- これは FR-15 で「将来」とした weight-scaling の polish 版（些末な goal は門を軽く通す思想の最初の実装）
+
 ### FR-18: スキル使用と steer の計測（v0.4.4）
 PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:
 - (a) **evolve の入力が実配線される** — 従来 skill-usage.csv の書き手が無く、evolve は常に空データで動いていた
