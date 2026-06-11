@@ -30,7 +30,7 @@ if fw_gate_closed "$phase"; then
       echo ""
       fw_designing_steer   # artifact に応じて deep-interview/discovery-council/design/grill を案内
       echo ""
-      echo "bypass: FLYWHEEL_OFF=1 / 中止: flywheel reset"
+      echo "bypass: FLYWHEEL_OFF=1 / 中止: $FW_CLI reset"
     } >&2
     fw_log_usage "steer:designing"   # FR-18: steer 従命率の分母
     exit 2

@@ -26,6 +26,10 @@ else
 fi
 unset _fw_src
 
+# ユーザー/モデル向けメッセージで CLI を案内する表記。PATH にあれば短く、
+# 無ければ plugin 同梱の実体パス（plugin install だけで全ディレクトリ動作させる）。
+if command -v flywheel >/dev/null 2>&1; then FW_CLI="flywheel"; else FW_CLI="$FW_PLUGIN_ROOT/bin/flywheel"; fi
+
 # 有効な phase（state machine のノード）
 FW_PHASES="no-spec designing spec-ready implementing polish eval done"
 

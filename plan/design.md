@@ -230,7 +230,7 @@ done で plan/ が空になるので、通常フローでは start 側の archiv
 | 入口 | 機構 | 摩擦 |
 |---|---|---|
 | **FR-17 greeter** | `hooks/session-greeter.sh`（SessionStart）が dormant 時は start の存在を案内、**active 時は phase/goal/次手を再アンカー**（compaction・resume で消えた context の復元、v0.4.3） | 0コマンド・gate を閉じない |
-| **FR-16 slash** | `commands/start.md` → `/flywheel:start <goal>` が `flywheel start` を実行 | CLI を打たず1コマンド（明示・安全）|
+| **FR-16 slash** | `commands/start.md` → `/flywheel:start <goal>` が `${CLAUDE_PLUGIN_ROOT}/bin/flywheel start` を実行（**PATH 非依存**・v0.4.7。空引数は status + goal 確認の degrade）| CLI を打たず1コマンド（明示・安全）|
 | **FR-15 intent-router** | `hooks/intent-router.sh`（UserPromptSubmit）が build 意図を検知して auto-engage | 何も打たない（invisible）。ただし **opt-in `FLYWHEEL_AUTO=1`** |
 
 > **なぜ「常時 gate ON（最初から start モード）」にしないか**: goal の無いセッションで gate を閉じると validate を通す spec が書けず門が永久に閉じ、質問・調査・他リポ作業・flywheel 自己改修まで全部 block される（FR-15 を opt-in にした誤爆問題の常時 ON 版）。greeter は gate を**閉じず**思い出させるだけ。「いちいち start を打つのが面倒」は FR-15 auto-engage（`FLYWHEEL_AUTO=1`）で解く。

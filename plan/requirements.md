@@ -95,8 +95,10 @@ goal が `done` に達したとき、その `plan/requirements.md` + `plan/desig
 
 完全 invisible が快適になるには「些末タスクは設計ゲートを即通過」する weight-scaling が要る（将来）。現状は engage 分類で粗く weight を見る。
 
-### FR-16: slash command 定型化（v0.4.0）
+### FR-16: slash command 定型化（v0.4.0、v0.4.7 で PATH 非依存化）
 `/flywheel:start <作りたいもの>` で `flywheel start`（eval 自動検出）を起動し、設計フェーズへ誘導する。CLI を打たず1コマンドで開始できる明示的入口（auto-engage を opt-in にしない派の受け皿）。
+
+**PATH 非依存（v0.4.7）**: command は `${CLAUDE_PLUGIN_ROOT}/bin/flywheel` を呼ぶ（裸の `flywheel` だと CLI を PATH に通したマシンでしか動かず「plugin を install すれば全ディレクトリで使える」が壊れる）。hook のメッセージも `FW_CLI`（PATH にあれば `flywheel`、無ければ plugin 同梱の実体パス）で案内する。引数なし起動（サジェストから Enter 直押し）は error にせず、status + 「goal を聞いてから start せよ」の degrade で受ける。
 
 ### FR-17: dormant 時の入口案内（SessionStart・低摩擦・v0.4.1）
 flywheel が dormant（state なし＝門が開いている）なセッション冒頭で、**SessionStart hook** が「設計駆動で作るなら `flywheel start`（or `/flywheel:start`）」を1行案内し、入口の discoverability を上げる。FR-15 と違い **gate を閉じない**（state を作らず、ただ思い出させるだけ）ので誤爆リスクが無い、最も軽い入口層。ノイズを避けるため:

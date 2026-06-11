@@ -29,8 +29,8 @@ if printf '%s' "$prompt" | grep -qiE '実装して|作って|作りたい|機能
   eval_cmd="$(fw_detect_eval)"
   fw_archive_plan >/dev/null   # FR-12: 前回の放棄 plan を退避（_start_goal と同じ防御。stale な design.md で門が開く事故を防ぐ）
   fw_init "$goal" "$eval_cmd" "true" "${eval_cmd:+auto}"
-  jq -cn --arg g "$goal" --arg e "${eval_cmd:-（自動検出なし。--eval 推奨）}" \
+  jq -cn --arg g "$goal" --arg e "${eval_cmd:-（自動検出なし。--eval 推奨）}" --arg cli "$FW_CLI" \
     '{hookSpecificOutput: {hookEventName: "UserPromptSubmit",
-      additionalContext: ("🎯 flywheel auto-engage（FLYWHEEL_AUTO）: 設計ゲートを有効化しました。\n  goal: " + $g + "\n  eval: " + $e + "\nまず plan/requirements.md と plan/design.md を書いてください（grill で叩く）。設計が validate を通ると実装ゲートが開きます。この auto-engage が不要なら flywheel reset。")}}'
+      additionalContext: ("🎯 flywheel auto-engage（FLYWHEEL_AUTO）: 設計ゲートを有効化しました。\n  goal: " + $g + "\n  eval: " + $e + "\nまず plan/requirements.md と plan/design.md を書いてください（grill で叩く）。設計が validate を通ると実装ゲートが開きます。この auto-engage が不要なら " + $cli + " reset。")}}'
 fi
 exit 0

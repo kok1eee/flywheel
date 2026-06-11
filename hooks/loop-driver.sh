@@ -78,7 +78,7 @@ fi
 # eval_cmd 未設定 → 決定論判定できない。polish だけ1回挿入し、stop は許可（無限ブロックを避ける）。
 if [[ -z "$eval_cmd" ]]; then
   should_polish && enter_polish "🪄 flywheel: 実装が一段落。"
-  echo "⚠️ flywheel: eval_cmd 未設定のため done を機械判定できません。'flywheel start --eval \"<ty/ruff/test>\"' で設定すると loop が完了を強制します。今回は stop を許可します。" >&2
+  echo "⚠️ flywheel: eval_cmd 未設定のため done を機械判定できません。'$FW_CLI start --eval \"<ty/ruff/test>\"' で設定すると loop が完了を強制します。今回は stop を許可します。" >&2
   exit 0
 fi
 
@@ -104,7 +104,7 @@ if [[ "$rc" -eq 0 ]]; then
   fw_log_usage "steer:verification"   # FR-18: steer 従命率の分母
   [[ -n "$arch" ]] && echo "   設計を退避: ${arch#"$FW_ROOT"/}" >&2
   n="$(fw_backlog_count)"
-  [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'flywheel next' で次を開始してください。" >&2
+  [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'$FW_CLI next' で次を開始してください。" >&2
   exit 0   # stop 許可
 fi
 

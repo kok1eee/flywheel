@@ -34,14 +34,14 @@ if fw_state_exists; then
     implementing|polish|eval)
       next="→ 実装を続けてください。停止すると loop-driver が eval（$(fw_get '.eval_cmd')）で done を判定します。" ;;
     done)
-      next="→ goal は達成済み。次へ: flywheel next（backlog から次を起動）/ flywheel reset（dormant に戻す）" ;;
+      next="→ goal は達成済み。次へ: $FW_CLI next（backlog から次を起動）/ $FW_CLI reset（dormant に戻す）" ;;
     *)
       next="" ;;
   esac
   emit "🛞 flywheel 稼働中: phase=$phase
   goal: $(fw_get '.goal')
 $next
-  状態: flywheel status / 中止: flywheel reset / bypass: FLYWHEEL_OFF=1"
+  状態: $FW_CLI status / 中止: $FW_CLI reset / bypass: FLYWHEEL_OFF=1"
 fi
 
 # --- dormant: 入口案内 ---
@@ -52,5 +52,5 @@ else
 fi
 
 emit "🛞 flywheel は dormant（設計ゲートは開いており通常作業の邪魔はしません）。
-  設計駆動で何か作るなら: flywheel start \"<作りたいこと>\"  /  /flywheel:start <作りたいこと>
+  設計駆動で何か作るなら: /flywheel:start <作りたいこと>  /  $FW_CLI start \"<作りたいこと>\"
   ${auto_line}"
