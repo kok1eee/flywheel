@@ -43,6 +43,11 @@ effort: medium
 
 `facets/references/plan-review-checklist.md` を Read し、4 観点（完全性 / 実現可能性 / リスク管理 / 明確性）を決定木の枝として使う。
 
+**5つ目の枝（必須・flywheel 配下では最重要）: 完了条件（eval）**。design.md の「## 完了条件（eval）」を必ず1問は詰める:
+- fenced block のコマンドは**実行可能か**（存在しないテストファイルを指していないか）
+- **goal 固有か**（プロジェクト全体の test/lint だけなら自動検出と同じ。この機能の done を判定できる形に詰める）
+- **合格 = goal 達成と言い切れるか**（緩すぎる条件は空振り done、厳しすぎる条件は永遠に done しない）
+
 ## Step 1: 対象の取り込み
 
 動的注入で見つかった `plan/*.md`、または `$ARGUMENTS` の対象を Read。明示・暗黙の**決定点を列挙**する。先に Glob/Grep でコード文脈を埋めておく。

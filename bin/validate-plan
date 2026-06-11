@@ -53,6 +53,11 @@ validate_design() {
     return
   fi
 
+  # 必須セクション: 完了条件（FR-19: spec が done を定義する。eval_cmd の源）
+  if ! grep -qE '^#{2,3} .*(完了条件|受け入れ基準)' "$design_file"; then
+    errors+=("design.md: 「完了条件（eval）」セクションがない — 何が満たされたら done か（可能なら fenced code block の実行コマンドで）を設計する")
+  fi
+
   # requirements.md が存在しない場合はスキップ
   if [[ ! -f "$req_file" ]]; then
     return

@@ -48,6 +48,13 @@ fw_set_json() {
   jq --arg k "$1" --argjson v "$2" 'setpath([$k]; $v)' "$FW_STATE" > "$tmp" && mv "$tmp" "$FW_STATE"
 }
 
+# 文字列フィールドを設定
+fw_set_str() {
+  fw_state_exists || return 1
+  local tmp; tmp="$(mktemp)"
+  jq --arg k "$1" --arg v "$2" 'setpath([$k]; $v)' "$FW_STATE" > "$tmp" && mv "$tmp" "$FW_STATE"
+}
+
 # phase を遷移し history に記録（from/to/by/ts）。state を進めるのは常に hook。
 fw_advance() {
   local to="$1" by="$2" from tmp
@@ -63,11 +70,13 @@ fw_advance() {
 
 # state を初期化（flywheel start）。goal を記録し designing から開始。
 # polish: "true"/"false"（FR-11、実装後 eval 前に simplify を steer するか）
+# eval_src: eval_cmd の出所 "explicit"（--eval 明示）/ "auto"（自動検出）/ ""（なし）。
+#   explicit 以外は design-validator が spec の完了条件で上書きできる（FR-19）。
 fw_init() {
-  local goal="$1" eval_cmd="${2:-}" polish="${3:-true}"
+  local goal="$1" eval_cmd="${2:-}" polish="${3:-true}" eval_src="${4:-}"
   mkdir -p "$FW_DIR"
-  jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, polish:$polish, polished:false, veto_count:0,
+  jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg src "$eval_src" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, eval_src:$src, polish:$polish, polished:false, veto_count:0,
       history:[{ts:$ts, from:"no-spec", to:"designing", by:"flywheel start"}]}' \
     > "$FW_STATE"
 }
@@ -186,6 +195,21 @@ EOF
   /flywheel:grill  （設計を1問ずつ詰問）→ design.md を更新すると validate-plan 自動実行 → 合格で実装ゲート解放
 EOF
   fi
+}
+
+# design.md の「## 完了条件（eval）」セクションから実行コマンドを抽出する（FR-19）。
+# セクション内の最初の fenced code block を読み、空行と # コメント行を除いて && で連結
+# （1行 = 1コマンド規約。連結により途中失敗で即 fail する）。見出しは 完了条件 / 受け入れ基準 を許容。
+# セクション or block が無ければ空（degrade: eval_cmd は従来の解決順のまま）。
+fw_extract_spec_eval() {
+  local f="$FW_ROOT/plan/design.md"
+  [[ -f "$f" ]] || { printf '\n'; return; }
+  awk '
+    /^#{2,3} / { insec = ($0 ~ /完了条件|受け入れ基準/) ; next }
+    insec && /^```/ { if (inblock) exit; inblock = 1; next }
+    inblock && !/^[[:space:]]*(#|$)/ { lines = lines (lines ? " && " : "") $0 }
+    END { print lines }
+  ' "$f"
 }
 
 # 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、

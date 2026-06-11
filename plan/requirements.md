@@ -85,7 +85,7 @@ goal が `done` に達したとき、その `plan/requirements.md` + `plan/desig
 `done` 到達時、loop-driver は backlog 残数を通知して `flywheel next` を促す。**auto-chain（hook が次を自動起動）は native `/goal` の完了セマンティクスが絡むため将来**。これで「goal の山を順に消化」が cron なしで回る（内側ループ=goal→done は既存、外側=backlog 消化はこの薄い層）。
 
 ### FR-14: eval 自動検出（低摩擦・v0.4.0）
-`flywheel start "<goal>"` で `--eval` を省略したとき、プロジェクトファイルから test/lint/型チェックコマンドを**自動検出**する: `pyproject.toml`/`pytest.ini`→`ruff check && pytest`、`package.json`→`npm run typecheck && lint && test`、`Cargo.toml`→`cargo test`、`go.mod`→`go test ./...`。検出できなければ空（degrade）。解決順は `--eval` > `.flywheel` 設定 > 自動検出 > 空。これで日常は `flywheel start "<goal>"` だけで済む。
+`flywheel start "<goal>"` で `--eval` を省略したとき、プロジェクトファイルから test/lint/型チェックコマンドを**自動検出**する: `pyproject.toml`/`pytest.ini`→`ruff check && pytest`、`package.json`→`npm run typecheck && lint && test`、`Cargo.toml`→`cargo test`、`go.mod`→`go test ./...`。検出できなければ空（degrade）。解決順は `--eval` 明示 > **spec の完了条件（FR-19、validate 合格時に昇格）** > 自動検出 > 空。これで日常は `flywheel start "<goal>"` だけで済む。
 
 ### FR-15: intent-router（invisible auto-engage・opt-in・v0.4.0）
 「使っていることを感じさせない」理想形。**UserPromptSubmit hook** が build 意図の強い prompt（実装して/作って/機能追加 等）を検知し、flywheel が dormant なら自動で `flywheel start`（eval 自動検出付き）する。誤爆（質問・調査・些末修正で gate が閉じる）を避けるため:
@@ -105,6 +105,16 @@ flywheel が dormant（state なし＝門が開いている）なセッション
 - 現在の `FLYWHEEL_AUTO` 状態を併記し、常用するなら auto-engage（FR-15）を勧める
 
 「最初は start を使え」を強制（gate を閉じる）でなく示唆（案内）で伝える。常時 gate ON は質問・調査・他作業まで巻き込み誤爆地獄になるため**採らない**——摩擦低減の欲求は FR-15 auto-engage で満たす。
+
+### FR-19: spec-designed eval — 完了条件を AI が設計し harness が拾う（v0.4.5）
+FR-6 の「完了判定は設計の受け入れ基準に照合する」を文字どおり実装する。従来 eval_cmd は `--eval` 手動 or 自動検出（プロジェクト全体の test/lint）のみで、**goal 固有の完了条件は誰も設計していなかった**。メタプロンプト手法（「目的に最適な指示文と完了条件を AI 自身に設計させ、人間は質問に答えて承認する」）を designing フェーズに融合する:
+
+- **design.md に「## 完了条件（eval）」セクションを必須化**（validate-plan が存在チェック。無ければ不合格）。fenced code block に実行コマンドを書く（1行 = 1コマンド、`&&` 連結）
+- **design-validator が validate 合格時にその block を `eval_cmd` へ昇格**。state の `eval_src`（explicit/auto/spec）で出所を管理し、`--eval` 明示時は上書きしない。state を書くのは hook（モデルは design.md を書くだけ＝C-2 原則維持）
+- deep-interview の曖昧性評価に **DONE 軸**を追加（完了条件の案を AI が設計し、ユーザーは承認/修正だけ）。grill の決定木に**完了条件の枝**を追加（実行可能か・goal 固有か・合格=達成と言い切れるか）
+- 入口は増やさない（`/vibe` 等の別コマンドは作らない）。雑な goal の受け止めは既存の designing パイプラインが担い、本 FR は「done の定義」だけを足す
+
+これで「AI が完了条件を設計する（メタプロンプトの本質）+ 判定は CLI の exit code（自己評価バイアスの排除）」が両立する。
 
 ### FR-18: スキル使用と steer の計測（v0.4.4）
 PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:

@@ -36,8 +36,20 @@ fi
 out="$(cd "$FW_ROOT" && "$vp" design 2>&1)" && rc=0 || rc=$?
 
 if [[ "$rc" -eq 0 ]]; then
+  # FR-19: 設計が定義した完了条件を eval_cmd へ昇格（--eval 明示時は上書きしない）。
+  # 「spec が done を定義する」を文字どおりにする配線。state を書くのは従来どおり hook。
+  eval_note=""
+  if [[ "$(fw_get '.eval_src')" != "explicit" ]]; then
+    spec_eval="$(fw_extract_spec_eval)"
+    if [[ -n "$spec_eval" ]]; then
+      fw_set_str eval_cmd "$spec_eval"
+      fw_set_str eval_src "spec"
+      eval_note="
+eval_cmd を設計の完了条件から設定: $spec_eval"
+    fi
+  fi
   fw_advance spec-ready "design-validator: validate-plan design pass"
-  emit_ctx "✅ flywheel: 設計が validate-plan を通過。実装ゲートを開きました（phase=spec-ready）。実装に進めます。goal: $(fw_get '.goal')"
+  emit_ctx "✅ flywheel: 設計が validate-plan を通過。実装ゲートを開きました（phase=spec-ready）。実装に進めます。goal: $(fw_get '.goal')$eval_note"
 else
   emit_ctx "❌ flywheel: 設計が validate-plan を通っていません（実装ゲートは閉じたまま）。修正してください:
 $out"

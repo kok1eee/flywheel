@@ -123,7 +123,7 @@ CLI（validate-plan / test / build）は hook が**直接実行**できる。ski
 ### phase-advancer（state を進める hook 群）— FR-7
 **state 遷移は全て hook がモデルの自然な作業を観測して進める（C-2 対策、モデルは state を進めない）。** 専用の単一 tracker ではなく、各イベント hook が自分の遷移を担当する:
 - **intent-router（UserPromptSubmit）**: 新規作業 prompt → `no-spec`→`designing`、設計を steer
-- **design-validator（PostToolUse, Write→plan/design.md）**: design.md 書き込みを検知 → `validate-plan design` を**直接実行**（CLI 委譲）→ exit 0 なら `designing`→`spec-ready`（FR-4）
+- **design-validator（PostToolUse, Write→plan/design.md）**: design.md 書き込みを検知 → `validate-plan design` を**直接実行**（CLI 委譲）→ exit 0 なら `designing`→`spec-ready`（FR-4）。合格時、design.md の `## 完了条件（eval）` の fenced block を `eval_cmd` へ昇格（FR-19・`--eval` 明示時は上書きしない。詳細は「spec-designed eval の配線」）
 - **design-gate（PreToolUse）**: 門が開いて最初の source 編集が通った瞬間 → `spec-ready`→`implementing`
 - **loop-driver（Stop）**: turn 終了時に `implementing`→`polish`（simplify steer, FR-11）→`eval`、eval-gate 判定で `eval`→`done`/`implementing`
 
@@ -149,6 +149,30 @@ loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し e
 全 Skill 使用を `${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}/skill-usage.csv` に記録する（観測のみ・常に exit 0・dormant でも動く）。design-gate（設計 steer）と loop-driver（polish / verification steer）は同じ CSV に `steer:<種別>` 行を記録するので、**steer 従命率 = steer 行の直後に対応 skill 行が現れた率**を dogfood で集計できる。evolve はこの CSV を「最近使われたスキル」の入力として読む（steer:* 行は除外）。
 
 **spec-ready 停止の扱い（v0.4.2）**: 門が開いた直後にモデルが source を1度も編集せず停止した場合、eval を回すと「未実装でも既存テストは green」で**空振り done** になり得る。よって spec-ready での停止は eval を回さず「実装を開始せよ」と steer して veto する（cap で暴走防止）。既知の縁: Bash だけで完結する goal は design-gate が実装開始を観測できず（H-1 と同根）spec-ready に留まり cap まで veto される — その場合は FLYWHEEL_OFF=1 で逃がす。
+
+## spec-designed eval の配線（FR-19・v0.4.5）
+
+「spec が done を定義する」を実装で閉じる。design.md の `## 完了条件（eval）` セクション（validate-plan が存在を強制）の最初の fenced code block を、**design-validator が validate 合格時に抽出して `eval_cmd` に昇格**させる（`fw_extract_spec_eval`: 空行・コメント除去、`&&` 連結）。出所は state の `eval_src` で管理:
+
+| eval_src | 意味 | spec による上書き |
+|---|---|---|
+| `explicit` | `--eval` 明示 | しない（人間の指定が最優先） |
+| `auto` | fw_detect_eval の自動検出 | する（spec は goal 固有でより正確） |
+| `spec` | 設計の完了条件から昇格 | （再 validate で更新される） |
+| 空 | なし | する |
+
+モデルは design.md を書くだけで state に触れない（C-2 維持）。完了条件の品質は deep-interview の DONE 軸（AI が案を設計→人間が承認）と grill の完了条件枝（実行可能性・goal 固有性・緩すぎ/厳しすぎ）で担保する。入口は増やさない——雑な goal の受け止めは既存 designing パイプラインの仕事で、本機構は「done の定義」だけを足す。
+
+## 完了条件（eval）
+
+flywheel 自身を flywheel で改修する場合の done 判定（FR-19 のドッグフード）:
+
+```bash
+for f in hooks/*.sh hooks/lib/common.sh bin/flywheel bin/validate-plan; do bash -n "$f" || exit 1; done
+jq -e . hooks/hooks.json > /dev/null
+jq -e . .claude-plugin/plugin.json > /dev/null
+bin/validate-plan all
+```
 
 ## compose の2系統（hook は skill を呼べない・C-3 対策）
 

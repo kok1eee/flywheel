@@ -44,16 +44,21 @@ _parse_goal_args() {
 
 # goal を起動（start/next 共通）。前回 plan を退避してから state を初期化。
 _start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish
-  local goal="$1" eval_cmd="$2" polish="$3" detected=""
-  if [[ -z "$eval_cmd" ]]; then
+  local goal="$1" eval_cmd="$2" polish="$3" detected="" eval_src=""
+  if [[ -n "$eval_cmd" ]]; then
+    eval_src="explicit"
+  else
     eval_cmd="$(fw_detect_eval)"   # --eval 省略時はプロジェクトから検出
-    [[ -n "$eval_cmd" ]] && detected=" (自動検出)"
+    [[ -n "$eval_cmd" ]] && { detected=" (自動検出)"; eval_src="auto"; }
   fi
   fw_archive_plan >/dev/null   # FR-12: 前回の未完了/完了 plan を退避（無ければ no-op）
-  fw_init "$goal" "$eval_cmd" "$polish"
+  fw_init "$goal" "$eval_cmd" "$polish" "$eval_src"
   echo "🎯 flywheel 開始: phase=designing"
   echo "   goal: $goal"
   if [[ -n "$eval_cmd" ]]; then echo "   eval_cmd: $eval_cmd$detected"; else echo "   eval_cmd: (なし — done は degrade で stop 許可。--eval で指定可)"; fi
+  if [[ "$eval_src" != "explicit" ]]; then
+    echo "   ※ design.md の「## 完了条件（eval）」に書いた fenced block が、validate 合格時に eval_cmd へ昇格します（goal 固有の done 定義）"
+  fi
   echo "   polish: $polish（実装後に simplify を steer）"
   echo ""
   echo "→ 実装ツール(source への Edit/Write)は今ブロックされています。"
@@ -105,7 +110,7 @@ case "$cmd" in
     if ! fw_state_exists; then echo "flywheel: dormant（state なし。門は開いている）"; exit 0; fi
     echo "phase   : $(fw_phase)"
     echo "goal    : $(fw_get '.goal')"
-    echo "eval_cmd: $(fw_get '.eval_cmd')"
+    echo "eval_cmd: $(fw_get '.eval_cmd')（出所: $(fw_get '.eval_src')）"
     echo "polish  : $(fw_get '.polish')（実施済: $(fw_get '.polished')）"
     echo "veto    : $(fw_get '.veto_count')"
     echo "history :"

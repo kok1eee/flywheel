@@ -104,6 +104,15 @@ interface Example {
 - [考慮事項1]
 - [考慮事項2]
 
+## 完了条件（eval）
+
+[この設計が「done」と言える条件。**この goal 固有**の機械判定を fenced code block で書く——flywheel の design-validator が validate 合格時にこの block を eval_cmd へ昇格させ、loop はこれが通るまで終わらない。プロジェクト全体の test/lint だけで済ませない（それは自動検出と同じで goal 固有性ゼロ）。1行 = 1コマンド（&& で連結される）]
+
+```bash
+pytest tests/test_[この機能].py
+ruff check src/[この機能]
+```
+
 ## 次のステップ
 → planner subagent でタスク分解
 ```
