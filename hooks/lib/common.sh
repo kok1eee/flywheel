@@ -267,6 +267,22 @@ fw_extract_spec_eval() {
   fw_extract_spec_eval_text < "$f"
 }
 
+# eval 出力（stdin）から fail 数を best-effort 抽出する（FR-25）。
+# 対応: pytest/jest「N failed」、ruff「Found N errors」、ty「Found N diagnostics」、go「--- FAIL:」行数。
+# eval_cmd は && 連鎖で最初に落ちたツールの出力だけが出るので、複数パターンは合算で安全。
+# どのパターンにも合わなければ空（呼び出し側は方向表示なしに degrade）。
+fw_count_fails() {
+  local out n sum=0 found=0
+  out="$(cat)"
+  n="$(printf '%s' "$out" | grep -oE '[0-9]+ failed' | tail -1 | grep -oE '[0-9]+' || true)"
+  if [[ -n "$n" ]]; then sum=$((sum + n)); found=1; fi
+  n="$(printf '%s' "$out" | grep -oE 'Found [0-9]+ (error|diagnostic)' | tail -1 | grep -oE '[0-9]+' || true)"
+  if [[ -n "$n" ]]; then sum=$((sum + n)); found=1; fi
+  n="$(printf '%s' "$out" | grep -cE '^--- FAIL:' || true)"
+  if [[ "${n:-0}" -gt 0 ]]; then sum=$((sum + n)); found=1; fi
+  if [[ "$found" -eq 1 ]]; then printf '%s\n' "$sum"; else printf '\n'; fi
+}
+
 # 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、
 # 失敗しても本処理を妨げない。置き場は plugin データ領域（evolve がここを読む）。
 fw_log_usage() {

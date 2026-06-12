@@ -162,6 +162,9 @@ CLI（validate-plan / test / build）は hook が**直接実行**できる。ski
 
 CLI（validate-plan / test / build）の exit code は hook が直接読めるので、これらの遷移は決定論的でモデル非依存。
 
+### 進捗方向と revert 規律（FR-25・v0.5.2）
+loop-driver の eval 失敗分岐で `fw_count_fails`（出力から fail 数を best-effort 抽出）を `last_fail_count` と比較し、veto steer に方向を載せる: 📉改善=続行 / ➡️横ばい=別仮説 / 📈悪化=**revert してから**別アプローチ（git revert / jj op restore）。green で baseline を 0 にするため、polish 後の regression は「0→N 悪化」として即 revert steer になる（prev_phase=polish の犯人 hint と相乗）。抽出不能な eval_cmd では方向表示なしの従来動作（degrade）。
+
 ### eval-gate（FR-6）
 loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し exit code で判定:
 - **静的チェックを連鎖**（決定論・モデル非依存、M-1 対策）。**exit 0 → `done`、非ゼロ → `implementing` に戻す**。

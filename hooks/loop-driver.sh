@@ -95,6 +95,7 @@ $out"
 
 if [[ "$rc" -eq 0 ]]; then
   fw_set_json veto_count 0
+  fw_set_json last_fail_count 0   # FR-25: green を baseline に（以後の悪化 = 0→N で即 revert steer）
   # 初回合格 → done の前に polish を1回（green を確認してから磨く = polish-on-green）
   should_polish && enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
   fw_advance done "loop-driver: eval pass ($eval_cmd)"
@@ -116,9 +117,25 @@ fi
 
 hint=""
 [[ "$prev_phase" == "polish" ]] && hint=" 直前が polish なので simplify の変更が壊した可能性が高い — その差分を疑ってください。"
+
+# FR-25: fail 数の進捗方向。悪化したら「失敗を積んだまま重ねない」= revert 規律を steer。
+cur_fails="$(printf '%s' "$out" | fw_count_fails)"
+prev_fails="$(fw_get '.last_fail_count')"
+[[ -n "$cur_fails" ]] && fw_set_json last_fail_count "$cur_fails"
+trend=""
+if [[ -n "$cur_fails" && -n "$prev_fails" ]]; then
+  if (( cur_fails < prev_fails )); then
+    trend=" 📉 進捗: fail ${prev_fails}→${cur_fails}。方向は正しい——このアプローチで続行。"
+  elif (( cur_fails > prev_fails )); then
+    trend=" 📈 悪化: fail ${prev_fails}→${cur_fails}。**直前の変更を戻してから**別のアプローチを試してください（git revert / jj op restore / 該当編集の取り消し）。失敗した変更を積んだまま次を重ねないこと。"
+  else
+    trend=" ➡️ 横ばい: fail ${prev_fails} のまま。同じアプローチの微調整ではなく、別の仮説を検討してください。"
+  fi
+fi
+
 fw_advance implementing "loop-driver: eval fail, veto $veto/$cap"
 cat >&2 <<EOF
-🔁 flywheel: eval 未達（$eval_cmd, veto $veto/$cap）。done にできません。修正して続けてください。$hint
+🔁 flywheel: eval 未達（$eval_cmd, veto $veto/$cap）。done にできません。修正して続けてください。$hint$trend
 goal: $(fw_get '.goal')
 失敗内容:
 $(printf '%s' "$out" | tail -15)
