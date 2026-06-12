@@ -1,5 +1,5 @@
 {
-  "description": "flywheel hooks — Sensors-first loop engine (session-greeter + design-gate + design-validator + loop-driver + intent-router + skill-logger)",
+  "description": "flywheel hooks — Sensors-first loop engine (session-greeter + plan-steer/plan-gate/plan-approved + design-gate + design-validator + loop-driver + intent-router + skill-logger)",
   "hooks": {
     "SessionStart": [
       {
@@ -17,6 +17,11 @@
       {
         "matcher": "",
         "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/plan-steer.sh",
+            "timeout": 5000
+          },
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/intent-router.sh",
@@ -45,6 +50,16 @@
             "timeout": 5000
           }
         ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/plan-gate.sh",
+            "timeout": 10000
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -54,6 +69,16 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/design-validator.sh",
+            "timeout": 15000
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/plan-approved.sh",
             "timeout": 15000
           }
         ]

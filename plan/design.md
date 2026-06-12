@@ -107,12 +107,12 @@ CLI（validate-plan / test / build）は hook が**直接実行**できる。ski
 - 計画は native でも `~/.claude/plans/*.md` に保存される（参考情報）
 - 公式 docs: plan mode は Bash 書き込みも含め read-only を強制 / 承認後モードはユーザー選択 / 対話では PermissionRequest event も使えるが headless で発火しないため PreToolUse を主軸にする
 
-### 新 hook（v0.5 実装予定）
+### 新 hook（v0.5.0 実装済み）
 - **plan-steer（UserPromptSubmit）— FR-24**: engage 中かつ `permission_mode == plan` のとき、grill 操作系の圧縮版（決定点列挙 / self-answer first / AskUserQuestion 1問ずつ推奨付き / 非スコープ・完了条件を計画に必須）を additionalContext で毎プロンプト注入。**grill を skill 発動依存から外し既定動作にする**（明示 `/flywheel:grill` はオンデマンド深掘り・CLI route 用に存置）
 - **plan-gate（PreToolUse, matcher: ExitPlanMode）— FR-21**: `FLYWHEEL_PLAN=1` のとき `tool_input.plan` を検証（必須: 非スコープ / 「## 完了条件（eval）」+ fenced command。hook 内 grep の軽量判定——ファイル前提の validate-plan はここでは使わない）。不合格 → exit 2 + 不足列挙
 - **plan-approved（PostToolUse, matcher: ExitPlanMode）— FR-22**: `fw_archive_plan` で前回退避 → `tool_response.plan` を `plan/design.md` へ書き出し → `fw_extract_spec_eval` で eval_cmd 昇格 → state 生成（goal = 計画の見出し、phase=implementing、baseline・承認後 permission_mode 記録）→ 以後 loop-driver
 
-> 残 spike（実装時に確認）: UserPromptSubmit の input JSON に `permission_mode` が含まれるか（docs の Common Input Fields には記載あり。PreToolUse では実機確認済み）。
+> UserPromptSubmit の input JSON に `permission_mode` が含まれることも実機確認済み（2026-06-12 ミニ spike: `{"event":"UserPromptSubmit","permission_mode":"plan"}`）。
 
 実装順: plan-gate / plan-approved + テスト（spike の headless 手法を流用）→ dogfood → `FLYWHEEL_PLAN` の default 化判断。
 

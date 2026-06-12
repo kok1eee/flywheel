@@ -45,12 +45,18 @@ $next
 fi
 
 # --- dormant: 入口案内 ---
-if [[ "${FLYWHEEL_AUTO:-}" == "1" ]]; then
-  auto_line="auto-engage: ON（FLYWHEEL_AUTO=1。「〜を実装して/作って」で自動起動、質問・調査はスルー）"
+if [[ "${FLYWHEEL_PLAN:-}" == "1" ]]; then
+  plan_line="plan route: ON（Shift+Tab で plan mode に入ると grill 既定動作 + 承認で自動 loop）"
 else
-  auto_line="auto-engage: off（常用するなら export FLYWHEEL_AUTO=1 で build 意図を自動起動）"
+  plan_line="plan route: off（export FLYWHEEL_PLAN=1 で「plan mode = flywheel」になる）"
+fi
+if [[ "${FLYWHEEL_AUTO:-}" == "1" ]]; then
+  auto_line="auto-engage: ON（FLYWHEEL_AUTO=1。「〜を実装して/作って」で自動起動・legacy）"
+else
+  auto_line="auto-engage: off（legacy。plan route が上位互換）"
 fi
 
 emit "🛞 flywheel は dormant（設計ゲートは開いており通常作業の邪魔はしません）。
-  設計駆動で何か作るなら: /flywheel:start <作りたいこと>  /  $FW_CLI start \"<作りたいこと>\"
+  しっかり作るなら: Shift+Tab で plan mode / 明示起動: /flywheel:start <作りたいこと> / $FW_CLI start \"<作りたいこと>\"
+  ${plan_line}
   ${auto_line}"

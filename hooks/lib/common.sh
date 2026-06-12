@@ -247,19 +247,24 @@ EOF
   fi
 }
 
-# design.md の「## 完了条件（eval）」セクションから実行コマンドを抽出する（FR-19）。
+# 計画/設計テキスト（stdin）の「## 完了条件（eval）」セクションから実行コマンドを抽出（FR-19/21）。
 # セクション内の最初の fenced code block を読み、空行と # コメント行を除いて && で連結
 # （1行 = 1コマンド規約。連結により途中失敗で即 fail する）。見出しは 完了条件 / 受け入れ基準 を許容。
-# セクション or block が無ければ空（degrade: eval_cmd は従来の解決順のまま）。
-fw_extract_spec_eval() {
-  local f="$FW_ROOT/plan/design.md"
-  [[ -f "$f" ]] || { printf '\n'; return; }
+# セクション or block が無ければ空。
+fw_extract_spec_eval_text() {
   awk '
     /^#{2,3} / { insec = ($0 ~ /完了条件|受け入れ基準/) ; next }
     insec && /^```/ { if (inblock) exit; inblock = 1; next }
     inblock && !/^[[:space:]]*(#|$)/ { lines = lines (lines ? " && " : "") $0 }
     END { print lines }
-  ' "$f"
+  '
+}
+
+# 同上の design.md ファイル版（無ければ空 = degrade: eval_cmd は従来の解決順のまま）。
+fw_extract_spec_eval() {
+  local f="$FW_ROOT/plan/design.md"
+  [[ -f "$f" ]] || { printf '\n'; return; }
+  fw_extract_spec_eval_text < "$f"
 }
 
 # 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、
