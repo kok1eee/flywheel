@@ -16,6 +16,21 @@ INPUT="$(cat)"
 fw_parse_tool_input "$INPUT"   # → FW_TOOL / FW_FP
 phase="$(fw_phase)"
 
+# C-2 防御（全 phase）: state（.flywheel/）へのモデルの直接編集をブロックする。
+# state は hook がモデルの自然なツール使用を観測して進める——直接書き換えは eval 判定の迂回になる。
+# （hook 自身は jq+mv で書くので影響なし。dormant 時は fw_hook_guard で既に抜けている）
+if [[ "$FW_TOOL" == "Edit" || "$FW_TOOL" == "Write" || "$FW_TOOL" == "NotebookEdit" ]]; then
+  case "${FW_FP#"$FW_ROOT"/}" in
+    .flywheel/*)
+      fw_log_usage "steer:state-guard"
+      {
+        echo "🚫 flywheel: .flywheel/（state）はモデルが編集しません。state は hook が観測して進めます（C-2）。"
+        echo "   done にしたいなら停止すれば loop-driver が eval で判定。中止は $FW_CLI reset。"
+      } >&2
+      exit 2 ;;
+  esac
+fi
+
 # source への実装書き込みか（Edit/Write/NotebookEdit かつ非設計ファイル）
 impl_write() { [[ "$FW_TOOL" == "Edit" || "$FW_TOOL" == "Write" || "$FW_TOOL" == "NotebookEdit" ]] && fw_is_impl_write "$FW_FP"; }
 

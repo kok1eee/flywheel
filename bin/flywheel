@@ -23,7 +23,7 @@ Usage:
   flywheel add "<goal>" [--eval ..][--no-polish]   backlog に goal を追加
   flywheel list              backlog 一覧
   flywheel next              dormant/done のとき backlog 先頭を pop して start
-  flywheel _advance <to> <by>  phase 遷移（hook 内部用。手動使用は非推奨）
+  flywheel _advance <to> <by>  phase 遷移（hook 内部用。FLYWHEEL_HOOK=1 必須・手動使用は拒否される）
 
 フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
 門の一時無効化: FLYWHEEL_OFF=1
@@ -125,6 +125,15 @@ case "$cmd" in
     echo "flywheel: reset 完了（dormant に戻った。門は開いている）"
     ;;
   _advance)
+    # C-2 防御: state を進めるのは hook だけ。モデル/人間の直接実行は拒否する。
+    # kakuduke の実戦（2026-06-12）でモデルが `_advance done` を直接叩いて eval 判定を
+    # 迂回した実例があり、env ガードを追加した。hook（とテスト）は FLYWHEEL_HOOK=1 で呼ぶ。
+    if [[ "${FLYWHEEL_HOOK:-}" != "1" ]]; then
+      echo "🚫 flywheel _advance: これは hook 内部用です。state はモデルではなく hook が進めます（C-2）。" >&2
+      echo "   done にしたいなら: そのまま停止すれば loop-driver が eval（$(fw_get '.eval_cmd')）の exit code で判定します。" >&2
+      echo "   goal を中止したいなら: flywheel reset" >&2
+      exit 1
+    fi
     [[ $# -lt 2 ]] && { echo "flywheel _advance <to> <by>" >&2; exit 1; }
     fw_advance "$1" "$2"
     ;;

@@ -119,7 +119,7 @@ Claude Code 2.1.63+ では、**同一リポジトリの git worktree 間で proj
 
 学び・気付きの行き先を 3 つに整理する。境界が曖昧だと evolve の判断がぶれて重複や取りこぼしが起きるため、書く前に必ず分類する。
 
-> 旧 o-m-cc の atoms 機構（`bin/atoms` / `atoms.csv`）は flywheel に移設していない。改善案の置き場は `${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}/improvements.md`（1行1案の追記）。
+> 旧 o-m-cc の atoms 機構（`bin/atoms` / `atoms.csv`）は flywheel に移設していない。改善案の置き場は flywheel データ領域の `improvements.md`（1行1案の追記。解決順: `$CLAUDE_PLUGIN_DATA` → `~/.claude/plugins/data/flywheel-*` → `~/.claude/flywheel-data`。evolve の Step 1 参照）。
 
 | 種類 | 場所 | 内容 | 例 |
 |---|---|---|---|

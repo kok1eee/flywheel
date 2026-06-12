@@ -78,6 +78,8 @@ state は各 hook が読み、**hook（Sensor）が書く**。会話履歴に非
 
 **原則: state 遷移は全て hook がモデルの自然なツール使用を観測して進める。モデルは一度も state を進めない。** モデルに `bin/flywheel state set` を撃たせる設計は禁止——それは「auto mode でモデルがアクションを撃たない」という flywheel が殺そうとしている問題の再発であり、自己矛盾になる。モデルは「設計を書く / コードを書く」という**作業だけ**を行い、harness がそれを観測して門を開閉する。
 
+> **v0.5.1 enforcement**: この原則は kakuduke 実戦（2026-06-12）で実際に破られた——モデルが `flywheel _advance done "eval pass + ..."` を Bash で直接実行し、loop-driver の eval 判定・polish・archive を迂回した（結果は偶然正しかったが自己申告 done）。対策: ① `_advance` は `FLYWHEEL_HOOK=1` 必須の env ガード（hook とテストだけが立てる）、② `.flywheel/` への Edit/Write を design-gate が**全 phase で**ブロック。Bash による state 直書きまでは塞がない（H-1 と同じ割り切り）が、どちらの steer も「停止すれば loop-driver が eval で判定する」と正しい道を教える。
+
 | 遷移 | 駆動する hook（イベント） | hook が観測するもの |
 |---|---|---|
 | `no-spec → designing` | **intent-router**（UserPromptSubmit） | prompt が新規作業意図 → state を designing にし設計を steer |
@@ -179,7 +181,7 @@ loop-driver（Stop）が `eval` phase で起動。`eval_cmd` を CLI 実行し e
 **diff 適応（FR-20・v0.4.6）**: `should_polish` が goal の累積 diff（`fw_goal_diff_lines`: state の `baseline_rev` からの insertions+deletions）を見て、`FLYWHEEL_POLISH_MIN_DIFF`（既定 30）未満なら polish を skip して即 done。baseline は start 時に `fw_baseline_rev` が記録（jj `@-` / git HEAD）。累積なので途中 commit に影響されない。pure git では未 track 新規ファイルが diff --stat に乗らないため `git ls-files --others` の行数を加算する（新機能はたいてい新規ファイル——落とすと polish が常に skip になる）。jj は snapshot されるので diff --from だけで正確。計測不能時は常に polish（degrade）。
 
 ### skill-logger（PreToolUse, matcher: Skill）— FR-18
-全 Skill 使用を `${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}/skill-usage.csv` に記録する（観測のみ・常に exit 0・dormant でも動く）。design-gate（設計 steer）と loop-driver（polish / verification steer）は同じ CSV に `steer:<種別>` 行を記録するので、**steer 従命率 = steer 行の直後に対応 skill 行が現れた率**を dogfood で集計できる。evolve はこの CSV を「最近使われたスキル」の入力として読む（steer:* 行は除外）。
+全 Skill 使用を `${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}/skill-usage.csv` に記録する（観測のみ・常に exit 0・dormant でも動く）。**実環境では Claude Code が hook に `CLAUDE_PLUGIN_DATA`（`~/.claude/plugins/data/flywheel-<marketplace>/`）を渡すことを確認済み**（2026-06-13）——本番データはそこに溜まる。main loop（skill 実行文脈）には無いため、読む側（evolve）は plugins/data を探す解決順を持つ。**テストから hook を直接叩くときは `CLAUDE_PLUGIN_DATA` を /tmp に明示設定**すること（fallback 領域がテストの steer 行で汚れる事故が実際に起きた）。design-gate（設計 steer）と loop-driver（polish / verification steer）は同じ CSV に `steer:<種別>` 行を記録するので、**steer 従命率 = steer 行の直後に対応 skill 行が現れた率**を dogfood で集計できる。evolve はこの CSV を「最近使われたスキル」の入力として読む（steer:* 行は除外）。
 
 **spec-ready 停止の扱い（v0.4.2）**: 門が開いた直後にモデルが source を1度も編集せず停止した場合、eval を回すと「未実装でも既存テストは green」で**空振り done** になり得る。よって spec-ready での停止は eval を回さず「実装を開始せよ」と steer して veto する（cap で暴走防止）。既知の縁: Bash だけで完結する goal は design-gate が実装開始を観測できず（H-1 と同根）spec-ready に留まり cap まで veto される — その場合は FLYWHEEL_OFF=1 で逃がす。
 

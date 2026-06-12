@@ -23,8 +23,12 @@ $ARGUMENTS（省略時は最近使われたスキル全て）
 3. **agent-memory**（`.claude/agent-memory/`、あれば）からエージェント固有の学びを抽出
 
 ```bash
+# データ領域の解決: CLAUDE_PLUGIN_DATA は hook 実行時には入るが、main loop（このスキルの実行文脈）
+# には無いことが多い。その場合は Claude Code の plugin data 領域 → 旧 fallback の順で探す。
+FW_DATA="${CLAUDE_PLUGIN_DATA:-$(ls -d "$HOME"/.claude/plugins/data/flywheel-* 2>/dev/null | head -1)}"
+FW_DATA="${FW_DATA:-$HOME/.claude/flywheel-data}"
 # 最近使われたスキル（CSV: timestamp,skill。header をスキップ。steer:* 行は hook の steer 発行記録なので除外）
-tail -n +2 "${CLAUDE_PLUGIN_DATA:-$HOME/.claude/flywheel-data}/skill-usage.csv" | grep -v ',steer:' | tail -20 | awk -F, '{print $1, $2}'
+tail -n +2 "$FW_DATA/skill-usage.csv" | grep -v ',steer:' | tail -20 | awk -F, '{print $1, $2}'
 ```
 
 ### Step 2: 既存 Gotchas との照合
@@ -77,10 +81,10 @@ Quality Gate を通った学びの行き先を判定する。詳細は `facets/p
 
 #### Improvement escalation の手順
 
-改善案系と判定したら、計測データと同じ場所の improvements.md に1行追記する:
+改善案系と判定したら、計測データと同じ場所（Step 1 で解決した `$FW_DATA`）の improvements.md に1行追記する:
 
 ```bash
-echo "- [$(date -u +%F)] <改善案（1行）> (next: <promote / 試行 / 議論>)" >> "${CLAUDE_PLUGIN_DATA:-$HOME/.claude/flywheel-data}/improvements.md"
+echo "- [$(date -u +%F)] <改善案（1行）> (next: <promote / 試行 / 議論>)" >> "$FW_DATA/improvements.md"
 ```
 
 その学びは Step 3 の Gotchas には書かない（improvement と Gotchas に二重登録すると着手判断がぶれる）。Step 5 の報告では `### improvement escalate` セクションに分類して明示する。
