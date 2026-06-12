@@ -25,13 +25,23 @@ o-m-cc は「品質が維持される限り止まらない」Sisyphus Loop を *
 
 人間が触れるのは①と②だけ。③は完全自動。
 
+### v0.5 の転回: モードが意図シグナル（plan-mode route）
+
+v0.4.x までは「auto mode のまま全てを解く」前提で入口の意図判定に苦労してきた（FR-15 の正規表現 classifier は誤爆ゆえ opt-in 止まり、FR-20 の diff 適応は事後の代理指標）。v0.5 で前提を反転する: **「しっかりやりたい」は native plan mode の選択（Shift+Tab）がユーザー自身の宣言**であり、誤爆率ゼロの意図シグナル。ワンショットは auto のまま素通しする。
+
+- **designing フェーズ ≒ native plan mode**: read-only は harness 本体が強制（Bash 書き込みも塞がる = 積み残しの H-1 が解決）。flywheel は門の再実装をやめ、**計画の品質保証**（FR-21）と**承認後の自動 loop**（FR-22）に再配置する
+- flywheel の役割 = 「plan mode の強化」+「切り替わった瞬間からの強化」
+- CLI ルート（`flywheel start` + design-gate）は headless / backlog 用に存置（2ルート構成）
+
 ## 機能要件
 
 ### FR-1: 設計ゲート（入口・hard block）
 実装意図のツール使用（source への Edit/Write、実装系 Bash）を、state が `no-spec` / `designing` の間は **PreToolUse hook が exit 2 で物理ブロック**する。ブロック時は steer メッセージで設計フェーズへ誘導する。prose による「お願い」ではなく、ツール実行を実際に止める。
 
-### FR-2: 設計フェーズは非スキップ（絶対）
-どんなに雑なプロンプトからでも、実質的な変更には**必ず設計フェーズを通す**。設計フェーズは省略不可。ただし変更の重さに応じて**設計の重さは自動スケール**する（些末な変更は設計フェーズ内のトリアージで即合格して抜ける。別途「diff 閾値で素通り」する別経路は設けない＝門は常に ON）。
+### FR-2: 設計フェーズは非スキップ（絶対）— v0.5 で強制範囲を再定義
+**flywheel が engage している作業**（plan-mode route = FR-23 で engage した plan mode 作業 / CLI route = `flywheel start` した goal）では、設計フェーズは省略不可。変更の重さに応じて**設計の重さは自動スケール**する（些末な変更は設計フェーズ内のトリアージで即合格して抜ける）。
+
+**v0.5 改**: auto mode のワンショットは**ユーザーのモード選択を尊重して門を閉じない**。「全ての実質的変更に常時強制」（v0.4.x の前提）は、意図判定の誤爆と引き換えだったため撤回。設計が要る作業かはユーザーがモードで宣言する。
 
 ### FR-3: 設計の硬化手段を人間の在席で切り替える
 設計を叩く手段を、人間が応答可能かで適応させる:
@@ -87,13 +97,15 @@ goal が `done` に達したとき、その `plan/requirements.md` + `plan/desig
 ### FR-14: eval 自動検出（低摩擦・v0.4.0）
 `flywheel start "<goal>"` で `--eval` を省略したとき、プロジェクトファイルから test/lint/型チェックコマンドを**自動検出**する: `pyproject.toml`/`pytest.ini`→`ruff check && pytest`、`package.json`→`npm run typecheck && lint && test`、`Cargo.toml`→`cargo test`、`go.mod`→`go test ./...`。検出できなければ空（degrade）。解決順は `--eval` 明示 > **spec の完了条件（FR-19、validate 合格時に昇格）** > 自動検出 > 空。これで日常は `flywheel start "<goal>"` だけで済む。
 
-### FR-15: intent-router（invisible auto-engage・opt-in・v0.4.0）
+### FR-15: intent-router（invisible auto-engage・opt-in・v0.4.0 → v0.5 で legacy 凍結）
 「使っていることを感じさせない」理想形。**UserPromptSubmit hook** が build 意図の強い prompt（実装して/作って/機能追加 等）を検知し、flywheel が dormant なら自動で `flywheel start`（eval 自動検出付き）する。誤爆（質問・調査・些末修正で gate が閉じる）を避けるため:
 - **opt-in `FLYWHEEL_AUTO=1` のときだけ**動く（既定 off。default 化は誤爆率を実測してから）
 - 質問・調査・説明依頼は engage しない（除外パターン）
 - 既に active なら触らない / 不要なら `flywheel reset`・`FLYWHEEL_OFF=1` で即解除
 
 完全 invisible が快適になるには「些末タスクは設計ゲートを即通過」する weight-scaling が要る（将来）。現状は engage 分類で粗く weight を見る。
+
+**v0.5 注記**: モード選択（FR-23）という誤爆率ゼロの上位互換シグナルの登場により legacy 凍結。コードは残すが default 化はしない。
 
 ### FR-16: slash command 定型化（v0.4.0、v0.4.7 で PATH 非依存化）
 `/flywheel:start <作りたいもの>` で `flywheel start`（eval 自動検出）を起動し、設計フェーズへ誘導する。CLI を打たず1コマンドで開始できる明示的入口（auto-engage を opt-in にしない派の受け皿）。
@@ -125,6 +137,19 @@ polish（FR-11）を goal の規模に適応させる。`flywheel start` 時に 
 - baseline が取れない（VCS なし）・diff 計測失敗 → 従来どおり polish（degrade）
 - skip も「実施判断済み」として `polished` に記録（再判定しない）
 - これは FR-15 で「将来」とした weight-scaling の polish 版（些末な goal は門を軽く通す思想の最初の実装）
+
+### FR-21: plan-mode gate — 提示される計画は検証済みのみ（v0.5）
+**PreToolUse(ExitPlanMode)** が `tool_input.plan`（計画本文）を検証し、必須要素——非スコープ、**完了条件（eval）= done を機械判定する fenced command**——が無ければ **exit 2 で差し戻す**（steer: 不足の列挙 + 設計スキルの案内）。合格した計画だけがユーザーの承認ダイアログに到達する。設計の対話的硬化（grill / deep-interview）は plan mode 中にそのまま動く（read-only ツールのみで成立するため）。spike（2026-06-12）で haiku ですら差し戻し steer に1回で従い、完了条件を自分で設計することを実証済み。
+
+### FR-22: 承認 = spec 確定 + loop 起動（v0.5）
+**PostToolUse(ExitPlanMode)**（= ユーザーが計画を承認した瞬間に発火することを spike で実証済み）に hook が:
+1. `tool_response.plan`（承認済み計画全文）を `plan/design.md` に書き出す——**spec の artifact 化まで hook がやる**（モデルは計画を提示するだけ。C-2 の強化であり、plan mode 中はファイルが書けないため唯一解でもある）。前回 plan は FR-12 の archive で退避
+2. 完了条件の fenced block を `eval_cmd` へ昇格（FR-19 の機構を流用）
+3. state を生成して `implementing` へ（designing / spec-ready は plan mode と承認が肩代わり）。baseline（FR-20）と承認後の permission_mode も記録
+以後は既存 loop-driver（eval veto / polish-on-green / veto cap）が done まで回す。
+
+### FR-23: plan-route の engage 条件（v0.5）
+plan mode は flywheel 以外の用途（雑な調査計画等）にも使われるため、FR-21/22 の発動は **opt-in `FLYWHEEL_PLAN=1`** から始める（FR-15 と同じ「実測してから default 化」の手順）。`FLYWHEEL_OFF=1` は常に優先。常用するユーザーは shell rc に export して「plan mode に入る = flywheel が乗る」を既定にできる。
 
 ### FR-18: スキル使用と steer の計測（v0.4.4）
 PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:

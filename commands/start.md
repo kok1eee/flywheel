@@ -17,4 +17,4 @@ flywheel を起動します（eval は自動検出。明示したいなら後で
 
 design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。以後は実装 → eval(自動検出した test/lint) → polish(simplify) → 再 eval → done まで自動で回ります。
 
-長時間の連続自律で回す場合は、native の `/goal` にもこの goal を張ってください（flywheel は eval veto と steer、`/goal` はターン継続を担当する compose 関係）。
+長時間の連続自律で回す場合は native の `/goal` との併用が有効です。ただし **`/goal` は UI コマンドで、モデル（あなた）からは Skill 経由で起動できない**。自分で実行を試みず、「連続自律で回すなら `/goal <この goal>` を打ってください」とユーザーに案内すること（flywheel は eval veto と steer、`/goal` はターン継続を担当する compose 関係）。

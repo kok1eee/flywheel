@@ -89,6 +89,30 @@ state は各 hook が読み、**hook（Sensor）が書く**。会話履歴に非
 
 CLI（validate-plan / test / build）は hook が**直接実行**できる。skill（design/grill/critic/sisyphus/verification）は hook が**直接呼べない**ので exit 2 + steer メッセージでモデルに撃たせる（下記「compose の2系統」）。どちらも state 遷移自体は hook が書くので、モデルの撃ち損ねは state を壊さない。
 
+## v0.5: plan-mode route（モード = 意図シグナル・2ルート構成）
+
+「auto mode のまま全てを解く」前提を撤回し、native plan mode に compose する（継続を /goal に委ねた C-1 と同じ移動を、門に対して行う）:
+
+| | **plan-mode route**（対話・主） | **CLI route**(headless・従) |
+|---|---|---|
+| 入口 | ユーザーが Shift+Tab で plan mode（+ `FLYWHEEL_PLAN=1`・FR-23） | `flywheel start` / `next` / intent-router(legacy) |
+| designing | native plan mode（read-only は harness 強制 = **H-1 解決**。grill/deep-interview は read-only で動くのでそのまま使える） | designing phase + design-gate（従来どおり） |
+| 門 | **plan-gate**: PreToolUse(ExitPlanMode) が計画テキストを検証・差し戻し（FR-21） | design-gate + design-validator（FR-1/FR-4） |
+| 開錠 | **ユーザー承認** → plan-approved が spec を artifact 化 + eval 昇格 + implementing（FR-22） | validate-plan 合格で spec-ready |
+| 以後 | loop-driver（共通: eval veto / polish-on-green / cap） | 同左 |
+
+### spike 結果（2026-06-12・実機確認済み）
+- **PreToolUse(ExitPlanMode)**: 発火する / `tool_input.plan` に計画全文 / `permission_mode` 取得可 / **exit 2 で差し戻し → haiku でも steer に1回で従い「## 完了条件」を自分で設計**した
+- **PostToolUse(ExitPlanMode)**: **ユーザー承認の瞬間に発火** / `tool_response.plan` に承認済み計画全文 / `permission_mode` は承認後モード（auto 等）に切替済み
+- 計画は native でも `~/.claude/plans/*.md` に保存される（参考情報）
+- 公式 docs: plan mode は Bash 書き込みも含め read-only を強制 / 承認後モードはユーザー選択 / 対話では PermissionRequest event も使えるが headless で発火しないため PreToolUse を主軸にする
+
+### 新 hook（v0.5 実装予定）
+- **plan-gate（PreToolUse, matcher: ExitPlanMode）— FR-21**: `FLYWHEEL_PLAN=1` のとき `tool_input.plan` を検証（必須: 非スコープ / 「## 完了条件（eval）」+ fenced command。hook 内 grep の軽量判定——ファイル前提の validate-plan はここでは使わない）。不合格 → exit 2 + 不足列挙
+- **plan-approved（PostToolUse, matcher: ExitPlanMode）— FR-22**: `fw_archive_plan` で前回退避 → `tool_response.plan` を `plan/design.md` へ書き出し → `fw_extract_spec_eval` で eval_cmd 昇格 → state 生成（goal = 計画の見出し、phase=implementing、baseline・承認後 permission_mode 記録）→ 以後 loop-driver
+
+実装順: plan-gate / plan-approved + テスト（spike の headless 手法を流用）→ dogfood → `FLYWHEEL_PLAN` の default 化判断。
+
 ## hook 設計
 
 ### design-gate（PreToolUse, matcher: Edit|Write|Bash）— FR-1, FR-2
