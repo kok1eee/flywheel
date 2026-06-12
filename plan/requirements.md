@@ -151,6 +151,13 @@ polish（FR-11）を goal の規模に適応させる。`flywheel start` 時に 
 ### FR-23: plan-route の engage 条件（v0.5）
 plan mode は flywheel 以外の用途（雑な調査計画等）にも使われるため、FR-21/22 の発動は **opt-in `FLYWHEEL_PLAN=1`** から始める（FR-15 と同じ「実測してから default 化」の手順）。`FLYWHEEL_OFF=1` は常に優先。常用するユーザーは shell rc に export して「plan mode に入る = flywheel が乗る」を既定にできる。
 
+### FR-24: grill の基本動作化 — plan mode の既定の振る舞い（v0.5）
+plan-mode route では、grill の方法論（決定点の列挙 → コードで答えが出るものは self-answer → 残る決定は AskUserQuestion で1問ずつ・推奨付き → 詰め切ってから計画提示）を **skill 発動に頼らず hook が注入する既定動作**にする。flywheel の thesis（モデルが skill を思い出すかに依存しない）を designing フェーズ自身に適用する——従来の「`/flywheel:grill` を使え」という steer は prose 誘導であり、flywheel が殺そうとした形そのものだった。
+
+- **plan-steer hook（UserPromptSubmit）**: engage 中（FR-23）かつ `permission_mode == plan` のとき、grill 操作系の圧縮版を additionalContext で毎プロンプト注入（compaction 後も効く = FR-17 再アンカーと同じ思想）
+- **plan-gate（FR-21）が下支え**: 操作系注入（soft）+ 形式ゲート（hard）の2段で「grilled な計画しかユーザーに提示されない」
+- **明示的 `/flywheel:grill` は存置**: CLI route（plan/*.md を叩く）、plan mode 中のオンデマンド深掘り、flywheel 外での利用。基本動作（暗黙）とオンデマンド（明示）の2層構造
+
 ### FR-18: スキル使用と steer の計測（v0.4.4）
 PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:
 - (a) **evolve の入力が実配線される** — 従来 skill-usage.csv の書き手が無く、evolve は常に空データで動いていた
