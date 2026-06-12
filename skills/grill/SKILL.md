@@ -14,11 +14,12 @@ effort: medium
 
 ## Step 0: 前提確認 — 詰める plan/design があること（動的注入）
 
-!`for f in plan/design.md plan/requirements.md; do [ -f "$f" ] && echo "FOUND: $f"; done; true`
+!`ls plan/design.md plan/requirements.md 2>/dev/null; true`
 
 **grill は「完成度の高い plan/design を叩く」後段スキル。** 対象が無いまま詰問しても空回りする。対象の優先順位:
 
-1. 上の注入で `FOUND` の `plan/*.md` → 最優先で Read
+0. **plan mode 中なら、いま会話で構成している計画そのもの**（plan mode はファイルが書けないので、詰めた結果は ExitPlanMode で提示する計画テキストに反映する。`plan/*.md` への artifact 化は承認時に flywheel の hook がやる。`~/.claude/plans/` の native 計画ファイルも対象になり得る）
+1. 上の注入に出た `plan/*.md` → 最優先で Read
 2. `$ARGUMENTS` が指すファイル / 設計記述
 3. 会話中で直前に固めた設計
 

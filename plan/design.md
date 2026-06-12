@@ -113,6 +113,10 @@ CLI（validate-plan / test / build）は hook が**直接実行**できる。ski
 
 実装順: plan-gate / plan-approved + テスト（spike の headless 手法を流用）→ dogfood → `FLYWHEEL_PLAN` の default 化判断。
 
+**designing スキル群の plan-mode 適応**: deep-interview / grill は read-only ツールのみなので plan mode 中そのまま動く。grill の対象優先 0 は「会話で構成中の計画」（v0.4.8 で追加——詰めた結果は ExitPlanMode の計画テキストに反映し、ファイル化は承認時の hook が担う）。designer agent（design.md を Write する）は CLI route 専用——plan-mode route では計画文書は会話で構成する。
+
+> **実装上の制約（v0.4.8 で実地に踏んだ）**: skill / command の `!` 動的注入行は permission checker が静的検査し、**shell 変数展開（`$f` 等）や command substitution を含むと「Contains simple_expansion」で弾かれて skill 自体が起動失敗する**。`!` 行は展開フリーで書く（`$ARGUMENTS` / `${CLAUDE_PLUGIN_ROOT}` はローダーがテキスト置換するので可）。
+
 ## hook 設計
 
 ### design-gate（PreToolUse, matcher: Edit|Write|Bash）— FR-1, FR-2
