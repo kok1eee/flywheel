@@ -116,18 +116,21 @@ fw_goal_diff_lines() {
   printf '%s\n' "$total"
 }
 
-# state を初期化（flywheel start）。goal を記録し designing から開始。
+# state を初期化（flywheel start / adopt）。goal を記録し designing から開始。
 # polish: "true"/"false"（FR-11、実装後 eval 前に simplify を steer するか）
 # eval_src: eval_cmd の出所 "explicit"（--eval 明示）/ "auto"（自動検出）/ ""（なし）。
 #   explicit 以外は design-validator が spec の完了条件で上書きできる（FR-19）。
+# entry: designing への入り方 "start"（要件を掘る）/ "adopt"（会話/handoff 合意を結晶化・FR-29）。
+#   fw_designing_steer がこの値で steer を分岐する。
 fw_init() {
-  local goal="$1" eval_cmd="${2:-}" polish="${3:-true}" eval_src="${4:-}"
+  local goal="$1" eval_cmd="${2:-}" polish="${3:-true}" eval_src="${4:-}" entry="${5:-start}"
   mkdir -p "$FW_DIR"
   jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg src "$eval_src" \
+    --arg entry "$entry" \
     --arg base "$(fw_baseline_rev)" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, eval_src:$src, polish:$polish, polished:false, veto_count:0,
-      baseline_rev:$base,
-      history:[{ts:$ts, from:"no-spec", to:"designing", by:"flywheel start"}]}' \
+      entry:$entry, baseline_rev:$base,
+      history:[{ts:$ts, from:"no-spec", to:"designing", by:("flywheel " + $entry)}]}' \
     > "$FW_STATE"
 }
 
@@ -226,8 +229,18 @@ fw_parse_tool_input() {
 
 # designing フェーズの「次の設計ステップ」を plan/ の artifact から判断して案内する（パイプライン統合）。
 # deep-interview → discovery-council → design → grill を artifact の有無で steer する。
+# entry=="adopt"（FR-29）かつ design.md 未作成なら「掘る」をスキップし結晶化を steer する。
 fw_designing_steer() {
   local pd="$FW_ROOT/plan"
+  if [[ "$(fw_get '.entry')" == "adopt" && ! -f "$pd/design.md" ]]; then
+    cat <<'EOF'
+→ adopt: 会話で合意した実装方針（無ければ .claude/journal.md 先頭エントリの Next Actions）を
+  plan/design.md に結晶化してください。「## 完了条件（eval）」セクションも必ず設計してください
+  （done を機械判定する fenced command）。掘り直し（deep-interview/discovery-council）は不要です。
+  → design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。
+EOF
+    return
+  fi
   if [[ ! -f "$pd/requirements.md" ]]; then
     cat <<'EOF'
 → まだ要件がありません。要件を固めてください:

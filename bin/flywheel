@@ -17,6 +17,9 @@ Usage:
   flywheel start "<適当prompt>" [--eval "<ty/ruff/testコマンド>"] [--no-polish]
         ① goal を記録し設計フェーズ(designing)を開始。実装ゲートが閉じる。
         --eval: 品質チェック(例 "ty check && ruff check && pytest")。--no-polish: simplify steer を無効化
+  flywheel adopt "<一言サマリ>" [--eval ..][--no-polish]
+        会話 or .claude/journal.md(handoff)で合意済みの方針を結晶化して開始(FR-29)。
+        designing の「掘る」をスキップ。design.md はモデルが続けて書く前提
   flywheel status            現在の phase / goal / eval_cmd / 遷移履歴を表示
   flywheel get <jq-filter>   state.json を jq で読む（hook 内部用）
   flywheel reset             state を破棄して dormant に戻す（門が開く）
@@ -42,9 +45,10 @@ _parse_goal_args() {
   done
 }
 
-# goal を起動（start/next 共通）。前回 plan を退避してから state を初期化。
-_start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish
-  local goal="$1" eval_cmd="$2" polish="$3" detected="" eval_src=""
+# goal を起動（start/next/adopt 共通）。前回 plan を退避してから state を初期化。
+# $4 entry: "start"（要件を掘る・既定）/ "adopt"（会話/handoff 合意を結晶化・FR-29）。
+_start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish, $4 entry
+  local goal="$1" eval_cmd="$2" polish="$3" entry="${4:-start}" detected="" eval_src=""
   if [[ -n "$eval_cmd" ]]; then
     eval_src="explicit"
   else
@@ -52,8 +56,12 @@ _start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish
     [[ -n "$eval_cmd" ]] && { detected=" (自動検出)"; eval_src="auto"; }
   fi
   fw_archive_plan >/dev/null   # FR-12: 前回の未完了/完了 plan を退避（無ければ no-op）
-  fw_init "$goal" "$eval_cmd" "$polish" "$eval_src"
-  echo "🎯 flywheel 開始: phase=designing"
+  fw_init "$goal" "$eval_cmd" "$polish" "$eval_src" "$entry"
+  if [[ "$entry" == "adopt" ]]; then
+    echo "🎯 flywheel adopt: phase=designing（合意を結晶化）"
+  else
+    echo "🎯 flywheel 開始: phase=designing"
+  fi
   echo "   goal: $goal"
   if [[ -n "$eval_cmd" ]]; then echo "   eval_cmd: $eval_cmd$detected"; else echo "   eval_cmd: (なし — done は degrade で stop 許可。--eval で指定可)"; fi
   if [[ "$eval_src" != "explicit" ]]; then
@@ -62,7 +70,11 @@ _start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish
   echo "   polish: $polish（実装後に simplify を steer）"
   echo ""
   echo "→ 実装ツール(source への Edit/Write)は今ブロックされています。"
-  echo "→ 先に plan/design.md を書いてください（grill で叩く）。"
+  if [[ "$entry" == "adopt" ]]; then
+    echo "→ 会話で合意した方針（無ければ .claude/journal.md 先頭の Next Actions）を plan/design.md に結晶化してください（「## 完了条件（eval）」も設計。掘り直し不要）。"
+  else
+    echo "→ 先に plan/design.md を書いてください（grill で叩く）。"
+  fi
   echo "→ design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。"
   echo "→ 連続自律で回すなら native の /goal も併用推奨（※ /goal は UI コマンド。モデルは起動できないため、ユーザーが打つ）。"
 }
@@ -72,7 +84,15 @@ case "$cmd" in
   start)
     _parse_goal_args "$@"
     [[ -z "$PARSED_GOAL" ]] && { echo "flywheel start: goal（適当prompt）が必要" >&2; exit 1; }
-    _start_goal "$PARSED_GOAL" "$PARSED_EVAL" "$PARSED_POLISH"
+    _start_goal "$PARSED_GOAL" "$PARSED_EVAL" "$PARSED_POLISH" "start"
+    ;;
+  adopt)
+    # FR-29: 会話 or .claude/journal.md（handoff 経由）で合意済みの方針を designing の
+    # 「掘る」をスキップして結晶化する入口。design.md を書くのは続けて動くモデル
+    # （会話/journal コンテキストを持つ）。state を作り steer を adopt 用に切り替える。
+    _parse_goal_args "$@"
+    [[ -z "$PARSED_GOAL" ]] && { echo "flywheel adopt: goal（一言サマリ）が必要" >&2; exit 1; }
+    _start_goal "$PARSED_GOAL" "$PARSED_EVAL" "$PARSED_POLISH" "adopt"
     ;;
   add)
     _parse_goal_args "$@"

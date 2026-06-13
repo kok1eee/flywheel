@@ -244,7 +244,7 @@ nested subagents（Claude Code 2.1.172+）を「**判断は強く、収集は薄
 - **計測の盲点**: skill-logger は PreToolUse(Skill) のみで、nested の Agent 呼び出しは観測できない。dogfood で委譲が定着したら計測拡張を検討（FR 候補）
 - **未検証**: `permissionMode: plan` の agent からの子 spawn は実戦で確認する。失敗しても従来動作（自前で Read/Grep）に degrade するだけで壊れない
 
-## council の Workflow 化（FR-27・v0.7.0）
+## council の Workflow 化（FR-27・v0.8.0 候補）
 
 **peer-to-peer の調整は model-driven**（SendMessage を撃つかはモデル次第）で、steer 従命率と同じ不確実性を council 内部に抱えていた。Workflow script は編成の決定論版——「相互検証が必ず走る」を script の制御フローが保証する。compose の2系統（CLI 委譲 100% / Skill steering <100%）に **第3系統: Workflow 委譲（編成 100% / 中身はモデル）** が加わる。
 
@@ -289,7 +289,7 @@ return await agent(ANALYST_PROMPT(args.feature, research, gaps, researchV, gapsV
 - **skill-logger 拡張**: hooks.json の PreToolUse matcher を `Skill` → `Skill|Workflow` に。skill-logger.sh は tool_name で分岐し `workflow:<meta.name or name>` 行を記録
 - **リスク**: Workflow tool は新しめの機能（要バージョン下限の実測）/ background 実行中に main loop が停止しても designing phase の loop-driver は eval を回さない（既存挙動）が、dogfood で要確認 / agentType の plugin agent 解決（`flywheel:researcher`）は docs 上サポートだが初回 spike で実証してから本実装に進む
 
-## 会話合意からの adopt 入口（FR-29・v0.8.0 候補）
+## 会話合意からの adopt 入口（FR-29・v0.7.0）
 
 `flywheel start` の designing は「要件をゼロから掘る」前提（`fw_designing_steer` が deep-interview / discovery-council へ誘導）。だが**会話で既に合意ができている**場合、掘り直しは摩擦。adopt は designing の**入り方だけ**を変える薄い variant——designing → spec-ready → implementing の配線は start と完全共有し、steer だけ「掘れ」から「結晶化せよ」に差し替える。
 

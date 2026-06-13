@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.6.0 / MIT License
+v0.7.0 / MIT License
 
 ## インストール
 
@@ -53,6 +53,18 @@ Shift+Tab で plan mode → 計画づくり（grill の操作系が既定動作:
 ```
 
 「**しっかり = plan mode、ワンショット = auto のまま**」。モード選択（Shift+Tab）が意図シグナルなので誤爆ゼロ——designing 中の read-only 強制も native plan mode が担う。flywheel は「計画の品質」と「承認後の自動 loop」に集中する。
+
+### 会話 / handoff の合意を載せる: adopt（v0.7.0・FR-29）
+
+会話の中で「何を作るか」が既に固まっているとき、要件をゼロから掘り直すのは摩擦。**合意を design.md に結晶化するだけ**で loop に載せる第3の入口:
+
+```
+/flywheel:adopt <一言サマリ>
+  → source 解決: このセッションの会話の合意 > .claude/journal.md 先頭の Next Actions（handoff 経由）
+  → モデルが design.md を結晶化（完了条件も）→ validate → spec-ready → implementing → 自動 loop
+```
+
+別マシン / 新セッションで会話コンテキストが空でも、**handoff → adopt** が成立する（議論したセッションで `/flywheel:handoff` → journal.md を VCS 共有 → 別マシンで `/flywheel:adopt` が Next Actions を結晶化）。designing への入り方は3通り: **start=掘る / plan mode=作って承認 / adopt=結晶化**。
 
 ### CLI ルート（headless / backlog 用）
 
@@ -144,6 +156,13 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.7.0
+- **会話 / handoff 合意からの adopt 入口（FR-29）** — designing への第3の入り方。会話 or `.claude/journal.md`（handoff 経由）で既に合意した実装方針を、要件をゼロから掘り直さず **design.md に結晶化**して loop に載せる。plan-approved（FR-22）と同型だが plan mode を経由しない
+  - `/flywheel:adopt <一言サマリ>`（主入口）/ `flywheel adopt "..."`（CLI ヘルパー）。source 解決は会話の合意 > journal の最新 Next Actions
+  - **handoff → adopt が最自然フロー**: 別マシン / 新セッションは会話コンテキストが空なので、handoff で固めた Next Actions を結晶化するのが本筋
+  - start との違いは designing の steer だけ（`entry:"adopt"` を state に記録 → `fw_designing_steer` が「掘るな・結晶化せよ」に分岐）。design.md → validate → spec-ready → implementing の配線は完全共有。**検証は通す**（完了条件セクションが無ければ差し戻し = done を定義しないまま実装に入らせない）。C-2 不変（state は CLI、design.md はモデル、門は validate の exit code）
+  - designing の入り方が3通りに: **start=掘る / plan mode=作って承認 / adopt=結晶化**
 
 ### 0.6.0
 - **調査・検証の sub-agent 委譲（FR-26）** — Claude Code 2.1.172 の nested subagents（sub-agent が子を spawn できる・最大5階層）を配線。「判断は強く、収集は薄く」の二層構造:

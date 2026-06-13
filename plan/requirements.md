@@ -173,7 +173,7 @@ Claude Code 2.1.172 の nested subagents（sub-agent が自分の sub-agent を 
 - **モデル方針（社内配布前提・明示指定で可）**: 判断層（council メンバー / critic / designer）と解釈系の収集層（code-explorer / architecture-mapper）は `model: sonnet`/`opus` 固定をやめ **`inherit`** に変更——main loop で選んだモデル（普段 Fable / Opus）がそのまま判断の質になる。skill 側の固定（discovery-council=sonnet / design=opus）も撤去（固定するとメンバーの inherit がそれを継承して意図が崩れる）。列挙系の sweep の子だけ呼び出し側が `model: haiku` を明示して降格。迷ったら継承。子の報告が期待と食い違ったら継承モデルで撃ち直す（staged escalation）。heuristics は capabilities.md に集約
 - **制約の自覚**: 子の prompt には**出力契約**（何を返したら終わりか）を必ず明記（「spec が done を定義する」思想の子への適用）。skill-logger は main loop しか観測しないため nested の活動は計測の盲点になる（将来の計測拡張候補）。要 2.1.172+（旧版では子に Agent ツールが渡らず、従来どおり自前調査に degrade）
 
-### FR-27: discovery-council の Workflow 化 — 決定論的 council（v0.7.0）
+### FR-27: discovery-council の Workflow 化 — 決定論的 council（v0.8.0 候補）
 peer-to-peer（TeamCreate + SendMessage）の調整は model-driven であり、Gotchas に記録済みの失敗（SendMessage の recipient 名ミスで silent loss / researcher 待ちぼうけ / 相互検証の省略）は構造的に再発しうる。**Workflow tool（決定論的編成）に置き換え**、main loop から見て council を「**Workflow 1 call + AskUserQuestion**」に封じ込める。loop の継続を /goal に、designing の read-only を plan mode に委ねたのと同じ「native に compose」の移動を、council の編成に対して行う。
 
 - **skill 名は維持**（`/flywheel:discovery-council`）。design-gate の steer（`fw_designing_steer`）・deep-interview のハンドオフ・design skill の誘導は無変更——**中身だけ差し替え**（hook 変更は skill-logger の matcher のみ）
@@ -185,7 +185,7 @@ peer-to-peer（TeamCreate + SendMessage）の調整は model-driven であり、
 - **完了条件**: dogfood 1回で (a) main loop の編成が Workflow 1 call に収まる (b) 曖昧 goal で ambiguities が AskUserQuestion に到達 (c) requirements.md が生成され schema 準拠の findings が CSV/ログで確認できる。機械判定が難しい対話部分は verification（挙動エビデンス）で代替
 - 効果検証後、同じ型を design → critic 反証 → 修正の loop-until-pass に展開（**FR-28 候補**）
 
-### FR-29: 会話合意からの adopt 入口 — designing の「掘る」をスキップ（v0.8.0 候補）
+### FR-29: 会話合意からの adopt 入口 — designing の「掘る」をスキップ（v0.7.0）
 会話の中で「何をやるか」が既に合意できているのに、`flywheel start` は designing フェーズで要件をゼロから掘り直す（deep-interview / discovery-council へ誘導）。合意は既に会話コンテキストにある——必要なのは「掘る」ではなく「**結晶化**」（会話の合意を design.md + 完了条件に書き起こす）だけ。これを専用入口 `adopt` として提供する。
 
 - **正体**: 会話 → design.md 生成 → validate → spec-ready → implementing。plan-approved（FR-22）と同型だが **plan mode を経由しない**（通常会話の流れのまま載せる）。「計画を新たに作る場」が plan route なら、adopt は「会話で固まった合意をそのまま載せる場」——作り直さないのが価値
