@@ -173,6 +173,18 @@ Claude Code 2.1.172 の nested subagents（sub-agent が自分の sub-agent を 
 - **モデル方針（社内配布前提・明示指定で可）**: 判断層（council メンバー / critic / designer）と解釈系の収集層（code-explorer / architecture-mapper）は `model: sonnet`/`opus` 固定をやめ **`inherit`** に変更——main loop で選んだモデル（普段 Fable / Opus）がそのまま判断の質になる。skill 側の固定（discovery-council=sonnet / design=opus）も撤去（固定するとメンバーの inherit がそれを継承して意図が崩れる）。列挙系の sweep の子だけ呼び出し側が `model: haiku` を明示して降格。迷ったら継承。子の報告が期待と食い違ったら継承モデルで撃ち直す（staged escalation）。heuristics は capabilities.md に集約
 - **制約の自覚**: 子の prompt には**出力契約**（何を返したら終わりか）を必ず明記（「spec が done を定義する」思想の子への適用）。skill-logger は main loop しか観測しないため nested の活動は計測の盲点になる（将来の計測拡張候補）。要 2.1.172+（旧版では子に Agent ツールが渡らず、従来どおり自前調査に degrade）
 
+### FR-27: discovery-council の Workflow 化 — 決定論的 council（v0.7.0）
+peer-to-peer（TeamCreate + SendMessage）の調整は model-driven であり、Gotchas に記録済みの失敗（SendMessage の recipient 名ミスで silent loss / researcher 待ちぼうけ / 相互検証の省略）は構造的に再発しうる。**Workflow tool（決定論的編成）に置き換え**、main loop から見て council を「**Workflow 1 call + AskUserQuestion**」に封じ込める。loop の継続を /goal に、designing の read-only を plan mode に委ねたのと同じ「native に compose」の移動を、council の編成に対して行う。
+
+- **skill 名は維持**（`/flywheel:discovery-council`）。design-gate の steer（`fw_designing_steer`）・deep-interview のハンドオフ・design skill の誘導は無変更——**中身だけ差し替え**（hook 変更は skill-logger の matcher のみ）
+- **ステージ構成は script が強制する**: ① `parallel(researcher, scout)` 独立調査 → ②（barrier 正当: 相互の結果が要る）**交換検証** — 互いの findings を引数に再 spawn（researcher は scout の gaps を技術検証、scout は researcher の知見を踏まえてギャップ再点検）→ ③ analyst が全 findings を入力に統合し `plan/requirements.md` を Write + 未解決曖昧点を構造化して返す。相互検証は「モデルが思い出したら」から「**必ず実行される**」へ
+- **schema 強制**: council-output-schema v1（facets/policies/council-output-schema.md）を JSON Schema 化し `agent(…, {agentType: 'flywheel:<member>', schema})` で強制。不一致はツール層が自動リトライ。prose の「従え」から機械強制へ（集約の機械適用が初めて保証される）
+- **人間接点は main loop に残す**: workflow は `{requirements_path, ambiguities[], assumptions[], summary}` を返し、ambiguities 非空なら main loop が AskUserQuestion（Step 3 スキップ禁止は維持）→ 回答を requirements.md に反映して確定。子・workflow 内から人間に聞けない制約を「自律作業 = 封じ込め / 人間接点 = main loop」の線引きとして固定する
+- **Team 版は削除**（完全置き換え。旧実装は jj 履歴に残る）。FR-26 の nested 委譲は workflow agent でも agent 定義経由でそのまま有効
+- **計測**: skill-logger の matcher を `Skill` → `Skill|Workflow` に拡張し、Workflow 起動を `workflow:<name>` 行で skill-usage.csv に記録（FR-18 の延長。nested の盲点は残るが「council が workflow で走った」は観測可能に）
+- **完了条件**: dogfood 1回で (a) main loop の編成が Workflow 1 call に収まる (b) 曖昧 goal で ambiguities が AskUserQuestion に到達 (c) requirements.md が生成され schema 準拠の findings が CSV/ログで確認できる。機械判定が難しい対話部分は verification（挙動エビデンス）で代替
+- 効果検証後、同じ型を design → critic 反証 → 修正の loop-until-pass に展開（**FR-28 候補**）
+
 ### FR-18: スキル使用と steer の計測（v0.4.4）
 PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:
 - (a) **evolve の入力が実配線される** — 従来 skill-usage.csv の書き手が無く、evolve は常に空データで動いていた

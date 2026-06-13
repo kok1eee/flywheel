@@ -244,6 +244,51 @@ nested subagents（Claude Code 2.1.172+）を「**判断は強く、収集は薄
 - **計測の盲点**: skill-logger は PreToolUse(Skill) のみで、nested の Agent 呼び出しは観測できない。dogfood で委譲が定着したら計測拡張を検討（FR 候補）
 - **未検証**: `permissionMode: plan` の agent からの子 spawn は実戦で確認する。失敗しても従来動作（自前で Read/Grep）に degrade するだけで壊れない
 
+## council の Workflow 化（FR-27・v0.7.0）
+
+**peer-to-peer の調整は model-driven**（SendMessage を撃つかはモデル次第）で、steer 従命率と同じ不確実性を council 内部に抱えていた。Workflow script は編成の決定論版——「相互検証が必ず走る」を script の制御フローが保証する。compose の2系統（CLI 委譲 100% / Skill steering <100%）に **第3系統: Workflow 委譲（編成 100% / 中身はモデル）** が加わる。
+
+### script 骨格（SKILL.md に inline で持つ）
+
+```js
+export const meta = {
+  name: 'discovery-council',
+  description: 'Discovery Council: 並列要件分析（決定論的編成）',
+  phases: [{ title: '調査' }, { title: '交換検証' }, { title: '統合' }],
+}
+const COUNCIL_SCHEMA = { /* council-output-schema v1 の JSON Schema 化 */ }
+phase('調査')
+const [research, gaps] = await parallel([
+  () => agent(RESEARCHER_PROMPT(args.feature), {agentType: 'flywheel:researcher', schema: COUNCIL_SCHEMA}),
+  () => agent(SCOUT_PROMPT(args.feature),      {agentType: 'flywheel:scout',      schema: COUNCIL_SCHEMA}),
+])  // barrier 正当: 交換検証は両方の結果のクロスが必要
+phase('交換検証')
+const [researchV, gapsV] = await parallel([
+  () => agent(CROSS_VERIFY('researcher', gaps),     {agentType: 'flywheel:researcher', schema: COUNCIL_SCHEMA}),
+  () => agent(CROSS_VERIFY('scout',      research), {agentType: 'flywheel:scout',      schema: COUNCIL_SCHEMA}),
+])
+phase('統合')
+return await agent(ANALYST_PROMPT(args.feature, research, gaps, researchV, gapsV),
+  {agentType: 'flywheel:analyst', schema: RESULT_SCHEMA})
+// RESULT_SCHEMA: { requirements_path, ambiguities: [{topic, why, options?}], assumptions: [], summary }
+```
+
+計 5 agent 呼び出し（調査2 + 交換検証2 + 統合1）。FR-26 の nested 委譲は agentType 経由で各 agent 定義が効くため、調査段の sweep 子はそのまま動く。
+
+### main loop 側（SKILL.md の手順）
+
+1. `$ARGUMENTS` を `args.feature` に渡して Workflow 起動（background。完了は task-notification で戻る）
+2. 返却の `ambiguities` 非空 → **AskUserQuestion**（Step 3 スキップ禁止の移植。質問は1回にまとめる）→ 回答を plan/requirements.md に反映
+3. `assumptions` は requirements.md の `## 仮定` セクションへ（未回答時の degrade も従来どおり）
+
+### 設計判断
+
+- **analyst が plan/requirements.md を Write する**（今と同じ責務配置）。design-gate は plan/ を全 phase 許可済み・design-validator は design_path（plan/design.md）にのみ反応するため、門との干渉なし
+- **AskUserQuestion を agent 定義から外さない**: scout / analyst の AskUserQuestion は単独呼び出し用に存置。workflow 経由の prompt では「仮定を記録して進む」（既存の自律完了原則）を明示
+- **schema の出所は facets を維持**: council-output-schema.md が source of truth。script 内の JSON Schema はその実体化（破壊変更時は schema_version と両方更新）
+- **skill-logger 拡張**: hooks.json の PreToolUse matcher を `Skill` → `Skill|Workflow` に。skill-logger.sh は tool_name で分岐し `workflow:<meta.name or name>` 行を記録
+- **リスク**: Workflow tool は新しめの機能（要バージョン下限の実測）/ background 実行中に main loop が停止しても designing phase の loop-driver は eval を回さない（既存挙動）が、dogfood で要確認 / agentType の plugin agent 解決（`flywheel:researcher`）は docs 上サポートだが初回 spike で実証してから本実装に進む
+
 ## フェーズ別 o-m-cc 委譲表（FR-8 / compose）
 
 | flywheel phase | 委譲先 | 系統 | 人間在席（FR-3） |
