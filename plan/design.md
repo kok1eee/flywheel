@@ -225,6 +225,25 @@ bin/validate-plan all
 
 > v1 dogfood で **steer 従命率を計測・記録**する（steer を出した回数 / モデルが実際に該当 skill を撃った回数）。これが低ければ steer メッセージの一意性を上げる or 物理ブロックの範囲を調整する。**v0.4.4 で計測基盤を実装済み**（FR-18 skill-logger: steer 発行と Skill 使用が同じ CSV に並ぶ）。
 
+## sub-agent 委譲の二層構造（FR-26・v0.6.0）
+
+nested subagents（Claude Code 2.1.172+）を「**判断は強く、収集は薄く**」の二層に使う:
+
+| 層 | 担当 | モデル |
+|---|---|---|
+| 判断層 | analyst / scout / researcher（要件・ギャップ・調査統合）、critic（反証判定）、designer（設計） | frontmatter `inherit`（main loop を継承。普段 = Fable / Opus） |
+| 収集層（解釈系） | code-explorer / architecture-mapper（トレース・境界把握は「気づけるか」が勝負） | frontmatter `inherit` |
+| 収集層（列挙系） | convention-scout、汎用の機械的 sweep の子 | 呼び出し側が `model: haiku` を明示（convention-scout の frontmatter は sonnet のまま = 単独利用時の既定） |
+
+設計判断:
+- **判断層を `model: sonnet`/`opus` 固定から `inherit` に変更**: 「全部強いモデルで見る」はゼロ設定の既定（指定省略 = 継承）であり、判断が要るのは降格方向だけ。main loop で選んだモデルの質をそのまま council / designer に流す。降格 heuristics は capabilities.md に集約し、agent prompt から参照する
+- **skill 側のモデル固定も撤去**: discovery-council（sonnet）/ design（opus）の frontmatter `model:` を削除。skill がターンのモデルを固定すると、メンバーの `inherit` がその固定値を継承してしまい二層構造の意図が崩れるため（セッションモデル追従が正）
+- **子の done を定義**: 子の prompt に出力契約（何を・どの形式で返したら完了か）を必須で書く。報告が契約と食い違う / 期待と矛盾 → 継承モデルで撃ち直し（staged escalation）。安い子の失敗モードは「重要なディテールを要約で潰す」であり、要件発見で見落とした制約は design に伝播して一番高くつく——迷ったら継承
+- **critic の反証は「落とさない」**: 反証が成立した指摘も削除せず confidence を下げて反証根拠を併記（Coverage-first 原則と矛盾させない。フィルタは集約側の仕事）
+- **depth 予算**: main → council メンバー（depth 1）→ sweep の子（depth 2）で収まる設計。上限5階層・depth 5 の background 子は Agent を持てない制約には十分な余裕
+- **計測の盲点**: skill-logger は PreToolUse(Skill) のみで、nested の Agent 呼び出しは観測できない。dogfood で委譲が定着したら計測拡張を検討（FR 候補）
+- **未検証**: `permissionMode: plan` の agent からの子 spawn は実戦で確認する。失敗しても従来動作（自前で Read/Grep）に degrade するだけで壊れない
+
 ## フェーズ別 o-m-cc 委譲表（FR-8 / compose）
 
 | flywheel phase | 委譲先 | 系統 | 人間在席（FR-3） |

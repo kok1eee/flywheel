@@ -2,7 +2,7 @@
 name: designer
 description: アーキテクチャ設計。要件定義が完成した後、実装の前にコンポーネント設計・データ設計・API設計を行うときに使う。「設計して」「アーキテクチャを考えて」「API設計」「データ構造を決めて」で発動。※要件定義は analyst、タスク分解は planner を使う。
 tools: Read, Glob, Grep, WebSearch, WebFetch, Write, ToolSearch, AskUserQuestion
-model: opus
+model: inherit
 memory: project
 isolation: worktree
 disallowedTools: [Bash]

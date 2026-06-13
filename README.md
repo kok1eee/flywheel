@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.5.2 / MIT License
+v0.6.0 / MIT License
 
 ## インストール
 
@@ -135,6 +135,8 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 - **agents**: critic / scout / designer / researcher / analyst / debugger / security-reviewer / コード理解系（code-explorer, architecture-mapper, convention-scout）/ prior-art 系（market-researcher, oss-scout, pattern-observer）
 - **bin**: `flywheel`（CLI）/ `validate-plan`（設計の形式検証）
 
+判断層の agent（analyst / scout / researcher / critic）は **nested subagents（2.1.172+）で調査・反証を子に委譲**する二層構造: 判断層は `model: inherit` で main loop のモデルを継承し、列挙系の sweep の子だけ `haiku` に降格（heuristics は `agents/capabilities.md`）。
+
 （作者の旧 plugin「o-m-cc」の後継。flywheel = loop を強制し steer する harness、o-m-cc = 判断知ライブラリという分業だったが、designing に必要な分は移設済み）
 
 ## 詳細
@@ -142,6 +144,14 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.6.0
+- **調査・検証の sub-agent 委譲（FR-26）** — Claude Code 2.1.172 の nested subagents（sub-agent が子を spawn できる・最大5階層）を配線。「判断は強く、収集は薄く」の二層構造:
+  - **council メンバーの調査委譲** — researcher / analyst / scout に Agent ツールを付与。大きいコードベースの sweep（類似機能トレース・境界把握・規約抽出）を code-explorer / architecture-mapper / convention-scout の子に委譲し、「探した過程は捨てて結論だけ持つ」。requirements.md の質が context 汚染に律速されなくなる
+  - **critic の adversarial verify** — critical / high の指摘ごとに反証専門の子を spawn してから報告。反証が成立した指摘は落とさず confidence を下げて反証根拠を併記（Coverage-first 維持）。確証バイアス対策
+  - **verification の観測委譲** — 挙動検証のログ / 出力ダンプは子に収集させ、判定（VERIFY）だけ自分でやる（Iron Law は委譲しても緩まない）
+  - **モデル方針** — 判断層（analyst / scout / researcher / critic / designer）と解釈系の収集層（code-explorer / architecture-mapper）は `sonnet`/`opus` 固定をやめ `inherit` に（main loop が Fable / Opus ならその質で判断）。skill 側の固定（discovery-council=sonnet / design=opus）も撤去——固定するとメンバーの inherit がそれを継承して二層構造が崩れるため。列挙系の子だけ呼び出し側が `haiku` を明示。迷ったら継承・期待と食い違えば継承モデルで撃ち直し（staged escalation）。heuristics は capabilities.md に集約
+  - 要 2.1.172+（旧版では子に Agent が渡らず従来の自前調査に degrade）。nested の活動は skill-logger に乗らない（計測拡張は将来候補）
 
 ### 0.5.2
 - **進捗方向の検知 + revert 規律（FR-25）** — veto loop が方向を持つ。eval 出力から fail 数を best-effort 抽出（pytest/ruff/ty/go 等）し、前回比で steer を変える: 📉改善=続行 / ➡️横ばい=別仮説へ / 📈**悪化=直前の変更を戻してから別アプローチ**（失敗を積んだまま重ねない）。green で baseline=0 にするため polish 後の regression は即 revert steer。cap までの8回を「同じ穴を掘る8回」にしない。

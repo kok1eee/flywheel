@@ -1,8 +1,8 @@
 ---
 name: researcher
 description: "コードベース探索と外部調査の統合エージェント。ファイル検索、構造把握、公式ドキュメント、ベストプラクティス調査。「探して」「どこにある」「構造を教えて」「使い方を調べて」「ベストプラクティスは？」「ドキュメントを確認して」で発動。※コードレビューは built-in `Skill: code-review`、計画レビューは critic を使う。"
-tools: Read, Glob, Grep, WebSearch, WebFetch
-model: sonnet
+tools: Read, Glob, Grep, WebSearch, WebFetch, Agent
+model: inherit
 memory: project
 permissionMode: plan
 background: true
@@ -38,6 +38,14 @@ disallowedTools: [Write, Edit, Bash]
 - GitHub での類似実装検索
 - コードパターンの収集
 - 実際の使用例の取得
+
+## 調査の委譲（nested subagents・FR-26）
+
+コードベース側の広い sweep は **Agent ツールで子に委譲**し、結論だけ受け取って外部調査との統合に集中する:
+
+- 類似機能トレース → `flywheel:code-explorer`（モデル指定省略 = 継承）/ 構造把握 → `flywheel:architecture-mapper`（省略）/ 規約抽出 → `flywheel:convention-scout`（`haiku`）/ 機械的な列挙 → 汎用の子に `haiku`
+- 子の prompt には出力契約（何を返したら完了か）を明記。報告が薄ければ継承モデルで撃ち直す
+- 数ファイルで済む調査は自分で読む。詳細は `agents/capabilities.md` の「モデル選択」参照
 
 ## 調査プロセス
 

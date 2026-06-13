@@ -29,7 +29,9 @@ Agent:
 
     ## Council プロトコル
     あなたは Discovery Council のメンバーです。
-    1. 独立に技術調査を実施
+    1. 独立に技術調査を実施。コードベース側の広い sweep は Agent で子に委譲し
+       結論だけ受け取る（agents/researcher.md の「調査の委譲」参照。列挙系の子は
+       model: haiku、解釈系は指定省略）
     2. 知見が見つかったら SendMessage で analyst と scout の両方に共有
     3. analyst・scout から共有された findings を検証し、技術的に妥当かコメント
     4. 追加調査を依頼されたら対応
@@ -63,7 +65,9 @@ Agent:
 
     ## Council プロトコル
     あなたは Discovery Council のメンバーです（requirements.md の作成担当）。
-    1. 独立に要件分析を実施
+    1. 独立に要件分析を実施。大きいコードベースの sweep は Agent で
+       code-explorer / architecture-mapper / convention-scout を子として切り、
+       結論だけ受け取る（agents/analyst.md の「調査の委譲」の表に従う）
     2. 要件ドラフトの主要部分ができたら SendMessage で scout・researcher に共有しフィードバックを促す
     3. scout からのギャップ報告、researcher からの調査知見を SendMessage で受け取り反映
     4. 全員の findings を統合してから requirements.md を最終確定
@@ -98,7 +102,8 @@ Agent:
 
     ## Council プロトコル
     あなたは Discovery Council のメンバーです。
-    1. 独立にギャップ分析を実施
+    1. 独立にギャップ分析を実施。裏取りの広い sweep は Agent で子に委譲し
+       結論だけ受け取る（agents/scout.md の「調査の委譲」参照）
     2. ギャップを発見したら SendMessage で analyst・researcher に共有
     3. researcher から技術知見を SendMessage で受け取ったら分析に反映
     4. analyst の要件ドラフトを検証し、漏れがあればフィードバック

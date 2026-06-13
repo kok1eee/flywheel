@@ -2,7 +2,7 @@
 name: code-explorer
 description: 既存コードベースの類似機能を深くトレースするエージェント。途中から（既存アプリへの機能追加）モードの Phase B で並列 spawn される。エントリポイント、データフロー、依存関係を辿る。「類似機能を辿って」「既存実装を調べて」「どう動いてるか追って」で発動。※ 抽象境界把握は architecture-mapper、命名規則は convention-scout を使う。
 tools: Read, Glob, Grep
-model: sonnet
+model: inherit
 memory: project
 permissionMode: plan
 background: true

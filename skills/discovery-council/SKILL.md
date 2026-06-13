@@ -3,7 +3,6 @@ name: discovery-council
 description: "3エージェント（researcher, analyst, scout）による並列要件分析 Council。peer-to-peer で相互検証し requirements.md を確定。「要件を整理して」「要件定義して」「現状分析して」「要件をまとめて」で発動。"
 argument-hint: "<feature description>"
 allowed-tools: [Agent, TeamCreate, TeamDelete, SendMessage, TaskCreate, TaskUpdate, Read, Write, Edit, AskUserQuestion, Glob, Grep, WebSearch, WebFetch]
-model: sonnet
 effort: high
 context: fork
 ---
@@ -48,6 +47,8 @@ TeamCreate:
 → **Agent prompt テンプレートは reference.md を Read して使用**
 
 Council プロトコル: 独立に分析 → SendMessage で相互共有 → 相互検証 → analyst が最終統合
+
+メンバーは広い調査 sweep を nested sub-agent（code-explorer / architecture-mapper / convention-scout 等）に委譲できる（FR-26。各 agent 定義の「調査の委譲」参照）。列挙系の子は `model: haiku`、解釈系は指定省略（継承）。メンバー自身は `model: inherit` で main loop のモデルを継承する。
 
 ## Step 3: 曖昧点の確認（スキップ禁止）
 
