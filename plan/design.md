@@ -289,6 +289,47 @@ return await agent(ANALYST_PROMPT(args.feature, research, gaps, researchV, gapsV
 - **skill-logger 拡張**: hooks.json の PreToolUse matcher を `Skill` → `Skill|Workflow` に。skill-logger.sh は tool_name で分岐し `workflow:<meta.name or name>` 行を記録
 - **リスク**: Workflow tool は新しめの機能（要バージョン下限の実測）/ background 実行中に main loop が停止しても designing phase の loop-driver は eval を回さない（既存挙動）が、dogfood で要確認 / agentType の plugin agent 解決（`flywheel:researcher`）は docs 上サポートだが初回 spike で実証してから本実装に進む
 
+## 会話合意からの adopt 入口（FR-29・v0.8.0 候補）
+
+`flywheel start` の designing は「要件をゼロから掘る」前提（`fw_designing_steer` が deep-interview / discovery-council へ誘導）。だが**会話で既に合意ができている**場合、掘り直しは摩擦。adopt は designing の**入り方だけ**を変える薄い variant——designing → spec-ready → implementing の配線は start と完全共有し、steer だけ「掘れ」から「結晶化せよ」に差し替える。
+
+### start と adopt の差分
+
+| | start | adopt |
+|---|---|---|
+| 想定 | goal は漠然・要件未確定 | 会話で実装方針が合意済み |
+| designing steer | 要件無し→deep-interview / 要件のみ→design / 設計あり→grill | 「会話の合意を design.md に結晶化せよ（掘り直すな・完了条件も設計）」 |
+| design.md の出所 | 設計フェーズで掘って書く | 会話コンテキストから結晶化 |
+| 共通 | design.md → validate-plan → spec-ready → 実装編集で implementing → eval veto loop / polish-on-green | 同左（完全流用） |
+
+### 実装
+
+1. **bin/flywheel に `adopt` case**: `_start_goal` を流用しつつ state に `entry:"adopt"` を記録、出力メッセージを「会話の合意を design.md に結晶化してください（完了条件含む）。掘り直し不要」に
+2. **fw_init に entry パラメータ**: 既定 `"start"`。state に保存（既存 start 経路は無変更で `"start"` が入る）
+3. **design-gate の fw_designing_steer 分岐**: `entry=="adopt"` かつ design.md 未作成なら結晶化 steer。design.md 作成後は start と同じ（validate→spec-ready 以降は共通）
+4. **slash command `/flywheel:adopt`**（commands/adopt.md）: 会話コンテキストを持つモデル向けの主入口。`${CLAUDE_PLUGIN_ROOT}/bin/flywheel adopt` を呼び、続けて design.md を書く
+
+### handoff からの adopt（最自然フロー・source 2系統）
+
+adopt の source は会話だけでなく `.claude/journal.md`（handoff 経由）も。**新セッション / 別マシンは会話コンテキストが空**なので、handoff で固めた Next Actions を読むのが本筋。
+
+```
+セッションA（設計議論）─ handoff ─▶ .claude/journal.md（Recap + Next、VCS 共有）
+                                          │
+        別マシン / 新セッションB ─────────┘
+            └─ /flywheel:adopt ─▶ journal の最新 Next を結晶化 ─▶ design.md ─▶ validate ─▶ loop
+```
+
+- **source 解決順**: 会話 / 引数の合意 > journal.md の最新 Next（会話に合意があればそれを優先、無ければ journal を読む）。journal はファイルなので CLI / hook からも読めるが、結晶化（design.md 化）はモデルの仕事である点は会話 source と同じ
+- **`/flywheel:adopt` の指示**（commands/adopt.md）: 「会話に合意した実装方針があればそれを、無ければ `.claude/journal.md` 先頭エントリの Next Actions を source に、design.md を結晶化せよ（完了条件 = eval も設計）」
+- handoff skill 側は無変更（journal を書く役は handoff、読んで結晶化する役は adopt と分離）。[[handoff]] の Next Actions 規約（ファイル/関数/コマンドレベルで具体的）が結晶化品質を担保
+
+### 設計判断
+
+- **会話コンテキスト依存ゆえ CLI 単体では完結しない**: `flywheel adopt` を素の shell から打っても design.md を書くのは会話 / journal を持つモデル。だから主入口は slash command（モデル起動）。CLI adopt は「モデルが続けて書く」前提のヘルパー
+- **plan route との棲み分け**: plan mode（FR-21/22）= 計画を新たに作って承認する場 / adopt = 会話 or handoff で既に固まった合意をそのまま載せる場。3 入口（start=掘る / plan=作って承認 / adopt=結晶化）が designing への 3 通りの入り方として並ぶ
+- **門・C-2 は不変**: state を作るのは CLI、design.md を書くのはモデル、spec-ready に進めるのは design-validator（validate の exit code）。adopt でも「モデルは state を進めない」は崩れない
+
 ## フェーズ別 o-m-cc 委譲表（FR-8 / compose）
 
 | flywheel phase | 委譲先 | 系統 | 人間在席（FR-3） |

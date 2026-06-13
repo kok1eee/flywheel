@@ -185,6 +185,18 @@ peer-to-peer（TeamCreate + SendMessage）の調整は model-driven であり、
 - **完了条件**: dogfood 1回で (a) main loop の編成が Workflow 1 call に収まる (b) 曖昧 goal で ambiguities が AskUserQuestion に到達 (c) requirements.md が生成され schema 準拠の findings が CSV/ログで確認できる。機械判定が難しい対話部分は verification（挙動エビデンス）で代替
 - 効果検証後、同じ型を design → critic 反証 → 修正の loop-until-pass に展開（**FR-28 候補**）
 
+### FR-29: 会話合意からの adopt 入口 — designing の「掘る」をスキップ（v0.8.0 候補）
+会話の中で「何をやるか」が既に合意できているのに、`flywheel start` は designing フェーズで要件をゼロから掘り直す（deep-interview / discovery-council へ誘導）。合意は既に会話コンテキストにある——必要なのは「掘る」ではなく「**結晶化**」（会話の合意を design.md + 完了条件に書き起こす）だけ。これを専用入口 `adopt` として提供する。
+
+- **正体**: 会話 → design.md 生成 → validate → spec-ready → implementing。plan-approved（FR-22）と同型だが **plan mode を経由しない**（通常会話の流れのまま載せる）。「計画を新たに作る場」が plan route なら、adopt は「会話で固まった合意をそのまま載せる場」——作り直さないのが価値
+- **source は2つ（会話 / handoff journal）**: adopt の入力は (a) 現セッションの会話で合意した方針、または (b) `.claude/journal.md` の最新 Next Actions（[[handoff]] 経由）。(a) はモデルだけが持つ会話コンテキスト。(b) は **新セッション / 別マシンで会話コンテキストが空でも成立する**——むしろ **handoff → adopt が最も自然な実戦フロー**（セッションA で議論 → handoff で合意を Next Actions に固める → 別マシンで adopt して loop に載せる）。handoff 規約で Next Actions は「ファイル名・関数名・コマンド名レベルで具体的」に書かれるため、結晶化の入力として質が高い。会話 source と handoff source は「自律作業 = 封じ込め / 人間接点 = main loop」の線引きとも整合（journal はその引き継ぎ媒体）
+- **入口は slash command が主**: `/flywheel:adopt`（会話コンテキストを持つモデルが起動）。source 解決は **会話/引数の合意 > journal.md の最新 Next**（会話に合意があればそれを、無ければ journal を読むフォールバック）。CLI `flywheel adopt "<一言サマリ>"` は state を作り steer を切り替えるヘルパーだが、design.md を書くのは続けて動くモデル（素の shell からは完結しない）
+- **start との違いは designing の入り方だけ**: 共通配線（design.md → design-validator → spec-ready → 実装編集で implementing → eval veto loop / polish-on-green）は完全に流用。adopt は state に `entry:"adopt"` を記録し、design-gate の `fw_designing_steer` が「要件を掘り直すな、会話で合意した方針を design.md に結晶化せよ（完了条件 = eval も設計）」に分岐する
+- **検証は通す**（ユーザー確認済み）: 結晶化した design.md も design-validator の validate-plan を通す。完了条件（eval）セクションが無ければ差し戻し。「検証済みの設計だけが門を開ける」原則を adopt でも維持（信用スキップはしない＝ done を定義しないまま implementing に入らせない）
+- **archive は通常どおり**（FR-12）: 前回 plan は退避。adopt は「既存 design.md を再利用」ではなく「会話から新規生成」なので前回 plan を残す理由はない
+- **C-2 維持**: state を作るのは CLI、design.md を書くのはモデル、spec-ready に進めるのは design-validator（validate の exit code）。adopt でも「モデルは state を進めない」は不変
+- **完了条件**: 会話で実装方針が合意済みの状態から `/flywheel:adopt` 一発で (a) design.md が会話内容で生成され (b) validate を通って spec-ready になり (c) deep-interview / discovery-council の掘り直し steer が出ない
+
 ### FR-18: スキル使用と steer の計測（v0.4.4）
 PreToolUse(Skill) hook（skill-logger）が**全 Skill 使用**を `skill-usage.csv`（`${CLAUDE_PLUGIN_DATA:-~/.claude/flywheel-data}`）に記録し、design-gate / loop-driver は **steer 発行**を `steer:*` 行で同じ CSV に記録する。観測のみで block しない（FR-10 の可観測性の延長）。これで:
 - (a) **evolve の入力が実配線される** — 従来 skill-usage.csv の書き手が無く、evolve は常に空データで動いていた
