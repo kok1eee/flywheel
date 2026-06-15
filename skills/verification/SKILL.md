@@ -127,3 +127,5 @@ verification で個々のタスクの完了を確認し、flywheel の eval で 
 - **テスト緑 = 挙動正しい、と誤認**: 静的チェック（test / build / 型）の通過は必要条件であって十分条件ではない。runnable な変更は起動して観測するまで「動く」と言わない。長時間自律ループではこの挙動ゲートがドリフト防止の本体
 
 <!-- AUTO-GOTCHAS -->
+<!-- 以下は実行経験から自動追記。不要なら削除してよい -->
+- **[2026-06-15] sub-reviewer の counter / state-machine 系の指摘は false positive がある**: 監視 council の観測者が「veto cap が効かず無限ループ」と高 confidence で報告したが、`bump_veto_or_handoff` が invocation 開始時に読んだ**ローカル変数**を +1 して書き戻すため state 側の `=0` リセットを上書きする、という shell hook 特有の「local-var vs 永続 state の read→write 順」を読み違えた誤検出だった（B001）。カウンタ・状態機械・並行系の指摘ほど、採用前に**実際の read→write 順を source で再導出**して反証を試みる（Iron Law は sub-reviewer の findings にも適用。もっともらしい主張ほど疑う）。

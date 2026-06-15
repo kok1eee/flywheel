@@ -95,6 +95,9 @@ flywheel monitor-set drift design "<reason>"
 - **観測者に Bash を持たせる（実 state 汚染事故）**: 観測者は必ず Read-only の `flywheel:drift-observer`（Read/Glob/Grep のみ）で spawn する。Bash を持つ agent（general-purpose 等）を観測者にすると、動的検証のつもりで `flywheel` / loop-driver を**実リポの `.flywheel` に対して**走らせ、verdict を自己執行して phase を勝手に done まで進める事故が起きる（2026-06-15、drift-observer 未登録時に general-purpose で代替して実発生。history に `[sim]` 由来の遷移が残った）。シミュレーションは必ず隔離 temp dir で。verdict を記録するのは overseer だけ（`flywheel monitor-set`）、観測者は state を一切書かない。
 
 <!-- AUTO-GOTCHAS -->
+<!-- 以下は実行経験から自動追記。不要なら削除してよい -->
+- **[2026-06-15] forked 実行（context:fork）が verdict を出さず空振りする**: `Skill: flywheel:monitor` が `(forked execution)` で「タスク待ち / ready」等の汎用応答だけ返し、観測者 fan-out も monitor-set も実行しないことがある（FR-30 実装時に複数回再現）。fork が走ったと信じ込まず、overseer の手順（context 収集 → drift-observer を fan-out → 集約 → `flywheel monitor-set`）を**呼び出し側で inline 実行**する。monitor-set が記録されない限り loop-driver は pending のまま再 steer するので、空振りは放置すると veto/monitor cap まで steer が続く。
+- **[2026-06-15] 修正後に stale な drift verdict で1回だけ余分に差し戻される**: council が drift を記録 → それを直しても、次の停止で loop-driver は**記録済みの drift を消費して** implementing に1回差し戻す（「修正して続けて」）。既に直していれば再修正せずそのまま通す。drift 枝が monitor を null クリアするので、その次の停止で pending → 再検証（修正後の実装に対して）に進む。stale verdict の bounce を「まだ直っていない」と誤読しない。
 
 ## 出力
 

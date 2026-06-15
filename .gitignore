@@ -1,2 +1,5 @@
 # flywheel の実行時 state（runtime 産物。コミットしない）
 .flywheel/
+
+# evolve の完了マーカー（PreCompact ループ防止のローカル一時ファイル。コミットしない）
+.claude/evolve-done
