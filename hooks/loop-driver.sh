@@ -42,6 +42,16 @@ bump_veto_or_handoff() {
   return 1
 }
 
+# 監視ゲート専用カウンタ（FR-30）。eval veto は緑ごとに L97 で 0 リセットされるため、緑領域を
+# 回る監視ループ（pending churn / drift-impl 反復）には人間 hand-back cap が効かない（eval-fail
+# ループとの非対称）。それを埋める別系統カウンタ。返り値 0 = cap 到達（呼び出し側で hand-back）。
+mcap="${FLYWHEEL_MONITOR_CAP:-${FLYWHEEL_VETO_CAP:-${CLAUDE_CODE_STOP_HOOK_BLOCK_CAP:-8}}}"
+monitor_bump() {
+  local n; n="$(fw_get '.monitor_attempts')"; n="${n:-0}"; n=$((n + 1))
+  fw_set_json monitor_attempts "$n"
+  [[ "$n" -ge "$mcap" ]]
+}
+
 # polish 段に入る（FR-11・polished フラグで goal につき1回だけ）。
 enter_polish() {  # $1 = steer メッセージの冒頭文脈
   fw_set_json polished true
@@ -98,7 +108,85 @@ if [[ "$rc" -eq 0 ]]; then
   fw_set_json last_fail_count 0   # FR-25: green を baseline に（以後の悪化 = 0→N で即 revert steer）
   # 初回合格 → done の前に polish を1回（green を確認してから磨く = polish-on-green）
   should_polish && enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
-  fw_advance done "loop-driver: eval pass ($eval_cmd)"
+
+  # --- monitor ゲート（FR-30）: done の前に監視 council で drift を検証する ---
+  # polish 後の緑形を、実装文脈を持たない観測者で多観点検証してから done にする。
+  # drift の執行はここに集約。drift フラグは Skill: flywheel:monitor が CLI（flywheel monitor-set）で書く。
+  mstatus="$(fw_get '.monitor.status')"
+  if [[ -z "$mstatus" ]]; then
+    fw_set_json monitor '{"status":"pending"}'   # 検証要求（pending 化）
+    if monitor_bump; then
+      # cap 到達: 監視が収束しない（skill 不調 等）→ monitor をクリアして人間に返す。
+      fw_set_json monitor null; fw_set_json monitor_attempts 0
+      fw_advance implementing "loop-driver: monitor cap $mcap 到達 — 人間介入が必要"
+      echo "🛑 flywheel: 監視 council が $mcap 回試行しても verdict を記録できません。人間に返します（Skill: flywheel:monitor が機能しているか確認してください）。" >&2
+      exit 0
+    fi
+    fw_log_usage "steer:monitor"
+    wf="$(fw_get '.watch_focus')"
+    echo "🔎 flywheel: eval 合格（$eval_cmd）。done の前に Skill: flywheel:monitor で drift を検証してください（観測者を fan-out: 要件逸脱 / 挙動 / 進捗）。${wf:+ 重点(watch-focus): $wf}" >&2
+    exit 2
+  elif [[ "$mstatus" == "pending" ]]; then
+    if monitor_bump; then
+      fw_set_json monitor null; fw_set_json monitor_attempts 0
+      fw_advance implementing "loop-driver: monitor cap $mcap 到達 — 人間介入が必要"
+      echo "🛑 flywheel: 監視 council が $mcap 回試行しても verdict を記録できません。人間に返します（Skill: flywheel:monitor が機能しているか確認してください）。" >&2
+      exit 0
+    fi
+    echo "🔎 flywheel: 監視 council の verdict が未記録です。Skill: flywheel:monitor を実行し、終わりに 'flywheel monitor-set <clean|drift> [level] [reason]' で結果を記録してください。" >&2
+    exit 2
+  elif [[ "$mstatus" == "drift" ]]; then
+    mlevel="$(fw_get '.monitor.level')"
+    mreason="$(fw_get '.monitor.reason')"
+    fw_set_json monitor null   # クリア（修正後の緑で再検証させる）
+    case "$mlevel" in
+      design|requirements)
+        # 巻き戻し天井: design/PRD レベルは自動で戻さず人間に hand-back（phase=designing で停止）。
+        fw_set_json monitor_attempts 0
+        fw_advance designing "loop-driver: monitor drift ($mlevel) → 人間 hand-back"
+        cat >&2 <<EOF
+🛑 flywheel: 監視 council が ${mlevel} レベルの drift を検知しました。自動では戻せません（人間判断）。
+理由: $mreason
+→ 設計ゲートを再度開きました（phase=designing）。plan/design.md（必要なら plan/requirements.md）を見直してください。
+EOF
+        exit 0   # stop 許可（人間へ hand-back）
+        ;;
+      *)
+        # implementing レベル（既定）: コードを直す。ただし同じ drift が cap 回続くなら設計レベルを疑い人間へ escalate。
+        if monitor_bump; then
+          fw_set_json monitor_attempts 0
+          fw_advance designing "loop-driver: monitor drift(impl) が $mcap 回未解消 → 設計レベル疑い・人間 hand-back"
+          cat >&2 <<EOF
+🛑 flywheel: 監視 council が implementing レベルの drift を $mcap 回検出しましたが解消しません。設計レベルの問題の可能性が高いので人間に返します。
+理由: $mreason
+→ 設計ゲートを再度開きました（phase=designing）。plan/design.md を見直してください。
+EOF
+          exit 0
+        fi
+        fw_advance implementing "loop-driver: monitor drift (impl) → 差し戻し"
+        cat >&2 <<EOF
+🔁 flywheel: eval は緑ですが監視 council が drift を検知しました（done にできません）。修正して続けてください。
+理由: $mreason
+EOF
+        exit 2
+        ;;
+    esac
+  elif [[ "$mstatus" == "clean" ]]; then
+    # 検証通過 → done へ進む（done 経路は fi の後に続く）
+    fw_set_json monitor null; fw_set_json monitor_attempts 0
+    fw_advance done "loop-driver: eval pass ($eval_cmd) + monitor clean"
+  else
+    # fail-closed: 未知の verdict（typo 等）は信用しない。クリアして再検証を強制し、done をすり抜けさせない。
+    fw_set_json monitor null
+    if monitor_bump; then
+      fw_set_json monitor_attempts 0
+      fw_advance implementing "loop-driver: monitor 不正 verdict が $mcap 回 — 人間介入が必要"
+      echo "🛑 flywheel: monitor verdict が $mcap 回不正です（最新 status=$mstatus）。人間に返します。" >&2
+      exit 0
+    fi
+    echo "🔎 flywheel: monitor verdict が不正（status=$mstatus）。Skill: flywheel:monitor で検証し直してください。" >&2
+    exit 2
+  fi
   arch="$(fw_archive_plan)"   # FR-12: 完了スペックを退避（plan/ をクリーンに）
   echo "✅ flywheel: eval 合格（$eval_cmd）。goal 達成として done。" >&2
   echo "   挙動エビデンスも残すなら: Skill: flywheel:verification（eval は静的判定のみ。実際に動かした証拠は別）" >&2
@@ -108,6 +196,11 @@ if [[ "$rc" -eq 0 ]]; then
   [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'$FW_CLI next' で次を開始してください。" >&2
   exit 0   # stop 許可
 fi
+
+# ここから eval 失敗（rc != 0）。緑が崩れたら監視 verdict と試行回数は破棄（次の緑で再検証・FR-30）。
+# 赤領域の暴走は eval veto が cap で止める。監視カウンタは緑領域専用なのでリセットする。
+fw_set_json monitor null
+fw_set_json monitor_attempts 0
 
 # 失敗 → veto。cap 到達なら人間に返す（FR-10）、未満なら implementing に戻して継続強制。
 if bump_veto_or_handoff "eval が通りません（$eval_cmd）。最新の失敗:

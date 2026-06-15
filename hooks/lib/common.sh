@@ -129,7 +129,7 @@ fw_init() {
     --arg entry "$entry" \
     --arg base "$(fw_baseline_rev)" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, eval_src:$src, polish:$polish, polished:false, veto_count:0,
-      entry:$entry, baseline_rev:$base,
+      entry:$entry, baseline_rev:$base, watch_focus:"", monitor:null, monitor_attempts:0,
       history:[{ts:$ts, from:"no-spec", to:"designing", by:("flywheel " + $entry)}]}' \
     > "$FW_STATE"
 }

@@ -3,6 +3,16 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-15 16:54 [ip-10-0-67-244]
+
+### Recap
+Zenn「Loop Engineering」記事を起点に、flywheel の次の改善方向を設計議論（実装はまだ・spec 化前）。記事の Loop Engineering を flywheel は概ね実装済みと確認。仕分け結論: **Worktrees 不要**（sub-agent 隔離では `isolation: worktree` を既に利用、並行実装はしない/jj運用・1リポ1wip）、**ハートビート不要**（自動起動は思想に反する＋sdtab/schedule/loop で外から叩けば足りる）、**jj new は flywheel 側でやらない**（`hooks/lib/common.sh:76` のとおり人間/jjルール側で start 前に new、flywheel は `@-` を変更前断面として baseline 計測に使う）、経験還元は `evolve` で実装済み。記事との差分は3軸に集約: ①検証=唯一のホールは「runnable の挙動判定を実装者本人がやる＝確証バイアス」（eval は CLI exit code で既に客観的）、②止め時=悪化トレンドが「助言」止まり→ロールバックを停止理由に昇格余地、③HITL=機構(AskUserQuestion)はあるが方針が薄い。**止め時の原則: 量(コスト/トークン)でなく方向(誤りのサイン)で止める**。監視は同期ゲート(Stop hook/loop-driver)が本体で、`/loop` の時間監視は粒度が合わず代替不可・長時間自律走行の補完に留まる。watchdog 設計の合意: 別エージェント(`Agent(run_in_background)` か cron、`/loop` は自己採点になるので不可)・**コンテキストはファイル経由**(plan/requirements.md・design.md・FW_STATE・diff を Read、会話は共有しない)・**hook は検知のみ**(シェルからは Agent を spawn 不可なので FW_STATE にフラグを立てるだけ)・**ブロックの執行は loop-driver に集約**・人間が手綱(watch_focus/on-off/hand-back応答/SendMessage)。**巻き戻し幅に天井**: 自動で戻れるのは implementing 内まで、design/PRD への遡上は必ず HITL を挟む(ぐるぐるが PRD まで発散するのを防ぐ)。discovery-council の実装を確認: TeamCreate + 3エージェント(researcher/analyst/scout)の peer-to-peer SendMessage、analyst が統合役、俯瞰専任は無し(orchestrator=skill実行セッション)。
+
+### Next
+- **監視 council の設計を詰める**（今ここ）。論点: (a) 複数セッション SendMessage の peer-to-peer か / (b) 俯瞰役(overseer)を別に置く fan-out→集約か。discovery-council は (a) だが、それは「main セッションの唯一の仕事が discovery」だから成立。監視では main=実装者が忙しいので俯瞰役を兼任できない → **俯瞰役を別に置く案が有力**。SendMessage は team 内通信で独立セッション間ではない点に注意。peer-to-peer の相互検証は「節目で1ラウンド」なら転用可、「常時ぐるぐる」はコスト発散。
+- 未確定の分岐: ①発火=節目イベント(hook カウント/done ゲート) vs 時間(cron) vs 両方、②構成=single watchdog から始める vs 最初から council、③戻り幅=自動implementing/design・PRDはHITL で確定可か。
+- 詰まったら FR spec に起こす（`/flywheel:start` か `adopt`）。confidence-scoring / council-output-schema policy は監視 council に再利用できそう。
+
 ## 2026-06-13 08:58 [ip-10-0-67-244]
 
 ### Recap

@@ -27,6 +27,10 @@ Usage:
   flywheel list              backlog 一覧
   flywheel next              dormant/done のとき backlog 先頭を pop して start
   flywheel _advance <to> <by>  phase 遷移（hook 内部用。FLYWHEEL_HOOK=1 必須・手動使用は拒否される）
+  flywheel watch-focus "<text>"   監視 council の重点を指定（FR-30 HITL）。overseer が観測者に渡す
+  flywheel monitor-set <clean|drift|pending> [level] [reason]
+        監視 council（Skill: flywheel:monitor）が verdict を記録する入口（FR-30）。
+        drift のとき level = implementing|design|requirements を付ける（design/requirements は人間 hand-back）
 
 フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
 門の一時無効化: FLYWHEEL_OFF=1
@@ -133,12 +137,36 @@ case "$cmd" in
     echo "eval_cmd: $(fw_get '.eval_cmd')（出所: $(fw_get '.eval_src')）"
     echo "polish  : $(fw_get '.polish')（実施済: $(fw_get '.polished')）"
     echo "veto    : $(fw_get '.veto_count')"
+    echo "watch   : focus=$(fw_get '.watch_focus')  monitor=$(fw_get '.monitor.status') $(fw_get '.monitor.level')"
     echo "history :"
     jq -r '.history[] | "  \(.ts)  \(.from) → \(.to)  [\(.by)]"' "$FW_STATE" 2>/dev/null || true
     ;;
   get)
     [[ $# -lt 1 ]] && { echo "flywheel get: jq filter が必要" >&2; exit 1; }
     fw_get "$1"
+    ;;
+  watch-focus)
+    # FR-30 HITL: 人間が監視 council の重点を指定する。overseer がこれを Read して観測者に渡す。
+    # _advance と違い guard しない（人間が随時更新する運用フィールド）。
+    fw_state_exists || { echo "flywheel watch-focus: state がありません（先に start）" >&2; exit 1; }
+    fw_set_str watch_focus "${1:-}"
+    echo "🔎 flywheel watch-focus: ${1:-（クリア）}"
+    ;;
+  monitor-set)
+    # FR-30: 監視 council（Skill: flywheel:monitor）が verdict を記録する入口。
+    # status: clean | drift | pending。drift のとき level（implementing/design/requirements）と reason を付ける。
+    # 執行（done ブロック / 差し戻し / hand-back）は loop-driver が monitor を読んで行う。
+    [[ $# -lt 1 ]] && { echo "flywheel monitor-set <clean|drift|pending> [level] [reason]" >&2; exit 1; }
+    fw_state_exists || { echo "flywheel monitor-set: state がありません（先に start）" >&2; exit 1; }
+    _ms="$1"; _ml="${2:-}"; _mr="${3:-}"
+    # enum 検証（typo verdict で done-gate をすり抜けさせない。loop-driver も未知 status は fail-closed）。
+    case "$_ms" in clean|drift|pending) ;; *) echo "flywheel monitor-set: status は clean|drift|pending（受領: '$_ms'）" >&2; exit 1 ;; esac
+    case "$_ml" in ""|implementing|design|requirements) ;; *) echo "flywheel monitor-set: level は implementing|design|requirements（受領: '$_ml'）" >&2; exit 1 ;; esac
+    [[ "$_ms" == "drift" && -z "$_ml" ]] && { echo "flywheel monitor-set: drift には level（implementing|design|requirements）が必要" >&2; exit 1; }
+    # 状態書き込みは fw_set_json（atomic な tmp+mv を集約）に通す。verdict オブジェクトだけ組む。
+    fw_set_json monitor "$(jq -cn --arg s "$_ms" --arg l "$_ml" --arg r "$_mr" \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, level:$l, reason:$r, ts:$ts}')"
+    echo "🔎 flywheel monitor: status=$_ms${_ml:+ level=$_ml}${_mr:+ reason=$_mr}"
     ;;
   reset)
     rm -f "$FW_STATE"

@@ -1,0 +1,90 @@
+{
+  "phase": "done",
+  "goal": "FR-30 — 監視 council（done-gate 検証 council）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash -n bin/flywheel && bash -n hooks/loop-driver.sh && bash -n hooks/lib/common.sh && ./bin/validate-plan all && grep -q 'monitor-set' bin/flywheel && grep -q 'watch-focus' bin/flywheel && grep -q 'watch_focus' hooks/lib/common.sh && grep -q 'monitor' hooks/loop-driver.sh && FW=\"$PWD/bin/flywheel\"; T=\"$(mktemp -d)\"; ( cd \"$T\" && \"$FW\" start \"eval-probe\" --eval \"true\" >/dev/null 2>&1 && \"$FW\" watch-focus \"pf\" >/dev/null && \"$FW\" monitor-set clean >/dev/null && \"$FW\" get '.watch_focus' | grep -qx pf && \"$FW\" monitor-set drift design \"r\" >/dev/null && \"$FW\" get '.monitor.level' | grep -qx design ) && test -f skills/monitor/SKILL.md && test -f agents/drift-observer.md",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "baseline_rev": "2bbff672f3402baa895ad3cbd6e821be065c9537",
+  "history": [
+    {
+      "ts": "2026-06-15T08:29:24Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-15T08:29:24Z",
+      "from": "designing",
+      "to": "implementing",
+      "by": "plan-approved: user approved plan"
+    },
+    {
+      "ts": "2026-06-15T08:40:45Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-15T08:40:47Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish (simplify)"
+    },
+    {
+      "ts": "2026-06-15T08:42:43Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-15T08:52:00Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor drift (impl) → 差し戻し"
+    },
+    {
+      "ts": "2026-06-15T08:52:19Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-15T09:08:31Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor drift (impl) → 差し戻し"
+    },
+    {
+      "ts": "2026-06-15T09:08:56Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-15T09:11:36Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "sim"
+    },
+    {
+      "ts": "2026-06-15T09:11:36Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-15T09:11:36Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash -n bin/flywheel && bash -n hooks/loop-driver.sh && bash -n hooks/lib/common.sh && ./bin/validate-plan all && grep -q 'monitor-set' bin/flywheel && grep -q 'watch-focus' bin/flywheel && grep -q 'watch_focus' hooks/lib/common.sh && grep -q 'monitor' hooks/loop-driver.sh && FW=\"$PWD/bin/flywheel\"; T=\"$(mktemp -d)\"; ( cd \"$T\" && \"$FW\" start \"eval-probe\" --eval \"true\" >/dev/null 2>&1 && \"$FW\" watch-focus \"pf\" >/dev/null && \"$FW\" monitor-set clean >/dev/null && \"$FW\" get '.watch_focus' | grep -qx pf && \"$FW\" monitor-set drift design \"r\" >/dev/null && \"$FW\" get '.monitor.level' | grep -qx design ) && test -f skills/monitor/SKILL.md && test -f agents/drift-observer.md) + monitor clean"
+    }
+  ],
+  "approved_mode": "auto",
+  "last_fail_count": 0,
+  "monitor": null,
+  "monitor_attempts": 0
+}
