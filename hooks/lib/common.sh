@@ -132,6 +132,12 @@ fw_init() {
       entry:$entry, baseline_rev:$base, watch_focus:"", monitor:null, monitor_attempts:0,
       history:[{ts:$ts, from:"no-spec", to:"designing", by:("flywheel " + $entry)}]}' \
     > "$FW_STATE"
+  # FR-31: goal-start を全 start 経路で計測（観測漏れ防止）。fw_init は CLI start/next/adopt・
+  # plan route(plan-approved)・auto-engage(intent-router) すべての共通 chokepoint。
+  # 経路は手元の signal から導出: plan route は eval_src=spec / adopt は entry=adopt / 他は start。
+  local route="$entry"
+  [[ "$eval_src" == "spec" ]] && route="plan"
+  fw_log_usage "goal:$route"
 }
 
 # validate-plan を解決。flywheel 同梱版を最優先（自己完結）。

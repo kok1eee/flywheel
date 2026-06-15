@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.0 / MIT License
+v0.8.1 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.1
+- **goal-start を全 start 経路で計測（FR-31）** — `flywheel:start`（skill 経路）しか skill-usage.csv に乗らず、**plan route（Shift+Tab→承認）と `flywheel start` CLI と auto-engage の起動が観測漏れ**していた（推奨経路の plan route ほど記録が消えるという逆転）。全 start 経路の共通 chokepoint である `fw_init` に計測を1箇所追加し、経路を手元 signal から導出して `goal:plan`（plan route）/ `goal:adopt`（adopt）/ `goal:start`（CLI start/next・auto）として記録。総 start 数 = `goal:*` の件数で経路に依らず取れるようになり、evolve の実績データが起動回数を取りこぼさなくなった
 
 ### 0.8.0
 - **監視 council（done-gate 検証）— 別 verifier で drift を潰す（FR-30）** — eval 緑（polish 後）→ done の直前に監視 council を1回走らせ、eval（静的）が捉えられない drift を実装文脈を持たない第三者の目で検証する。記事 Loop Engineering の「Verifier を別に」「検証の死角」への解毒剤
