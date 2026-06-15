@@ -305,7 +305,13 @@ fw_count_fails() {
 # 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、
 # 失敗しても本処理を妨げない。置き場は plugin データ領域（evolve がここを読む）。
 fw_log_usage() {
-  local d="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/flywheel-data}" csv
+  # データ解決は evolve（skills/evolve/SKILL.md Step 1）と揃える: CLAUDE_PLUGIN_DATA →
+  # plugin データ領域 → 最後の保険。CLI 経路（command の ! 行 / 素の flywheel）は
+  # CLAUDE_PLUGIN_DATA 未設定なので、ここで plugin データ領域へ寄せないと evolve が読む
+  # 本番 CSV と置き場が割れる（FR-31 の観測漏れの残り。経路で goal:start が別ファイルに散る）。
+  local d csv
+  d="${CLAUDE_PLUGIN_DATA:-$(ls -d "$HOME"/.claude/plugins/data/flywheel-* 2>/dev/null | head -1)}"
+  d="${d:-$HOME/.claude/flywheel-data}"
   mkdir -p "$d" 2>/dev/null || return 0
   csv="$d/skill-usage.csv"
   [[ -f "$csv" ]] || echo "timestamp,skill" > "$csv" 2>/dev/null || return 0

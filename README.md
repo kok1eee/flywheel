@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.1 / MIT License
+v0.8.2 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.2
+- **計測の置き場を evolve と統一（FR-31 の完成）** — FR-31 で全 start 経路が `goal:*` を記録するようにしたが、`fw_log_usage` の fallback 先（`~/.claude/flywheel-data`）が evolve のデータ解決（`~/.claude/plugins/data/flywheel-*`）と食い違っており、**hook 経路（plan route）は本番 CSV / CLI 経路（command の `!` 行・素の CLI）は fallback CSV** へと記録先が割れていた（evolve は本番のみ読むので CLI 経路の `goal:start` を取りこぼす）。`fw_log_usage` のデータ解決を evolve と同順（`CLAUDE_PLUGIN_DATA` → plugin データ領域 → 最後の保険）に揃え、全経路が evolve の読む1ファイルに集約されるようにした。観測漏れが経路・置き場の両面で塞がった
 
 ### 0.8.1
 - **goal-start を全 start 経路で計測（FR-31）** — `flywheel:start`（skill 経路）しか skill-usage.csv に乗らず、**plan route（Shift+Tab→承認）と `flywheel start` CLI と auto-engage の起動が観測漏れ**していた（推奨経路の plan route ほど記録が消えるという逆転）。全 start 経路の共通 chokepoint である `fw_init` に計測を1箇所追加し、経路を手元 signal から導出して `goal:plan`（plan route）/ `goal:adopt`（adopt）/ `goal:start`（CLI start/next・auto）として記録。総 start 数 = `goal:*` の件数で経路に依らず取れるようになり、evolve の実績データが起動回数を取りこぼさなくなった
