@@ -3,6 +3,17 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-16 14:13 [ip-10-0-67-244]
+
+### Recap
+flywheel を dogfooding して構造的弱点を3つ発見・うち2つを実装し、v0.8.4 を push + install した（要再起動で反映）。発端は skill-usage.csv の分析で `steer:verification` が 8 回発行され実行 0 件だった点 → 調査の結果バグでなく設計どおり（verification は done 後の optional nudge で強制力ゼロ、simplify/monitor は exit 2 の blocking）。grill で「eval が薄い(eval_src=auto)プロジェクト限定で blocking 化」と方針確定し **FR-32**（`verify-set` サブコマンド + `fw_eval_is_thin` + loop-driver ゲート）を実装。途中で **A**（`fw_detect_eval` が pytest/npm を直叩き → uv/bun/pnpm/yarn を lockfile 判定して `uv run` 等を前置）も修正。実装中に **gap B**（eval_cmd が spec-ready 以降 immutable・直すには reset しかない）と **H-1**（非コード goal が spec-ready で詰まる）を実地で踏み、ROADMAP.md と auto-memory に記録。注意: ツールが長時間ハングした事故あり（Edit/Skill/`!cmd` は別パスで通った）。eval_src の実値は `explicit|auto|spec`（`.eval_src` フィールド。`eval_source`/`fallback` は存在しない — ハング中の壊れ出力に騙された）。
+
+### Next
+- **最優先: 再起動して 0.8.4 hooks を live にする**（今のセッションは 0.8.2 hooks。FR-32 ゲート/uv 検出は再起動後に効く）。
+- **ROADMAP ★★★#2 `flywheel set-eval "<cmd>"` を `flywheel:adopt` で実装**（gap B 解消）。設計: `bin/flywheel` に `monitor-set`/`verify-set` と同型のサブコマンドを追加し `state.eval_cmd=<cmd>` / `eval_src="explicit"` を書く（`fw_set_str`/`fw_set_json`）。`fw_state_exists` ガード・phase 不問（飛行中に直すのが目的）・usage と status 表示も追従。CLI は state を書ける（C-2 はモデル直編集のみ禁止）ので `FLYWHEEL_HOOK` ガード不要。
+- set-eval の完了条件(eval): `bash -n bin/flywheel && grep -q 'set-eval' bin/flywheel` + mktemp で `flywheel start`→`set-eval "X"`→`get '.eval_cmd'`==X / `get '.eval_src'`==explicit を確認。**design.md の完了条件は `validate-plan design`（`all` 不可: adopt goal は requirements.md 無し。今回の reset 地獄の主因）**。
+- 関連メモ: `flywheel-gap-b-eval-cmd-locked` / `flywheel-roadmap-doc` / `flywheel-noncode-goal-stuck` / `tool-hang-vary-tactics`。ROADMAP.md に残り改善候補（★★ verify 経路=H-1, ★★ マルチレポ, ★ veto 原因示唆, ★ polish 比例制御）。
+
 ## 2026-06-15 16:54 [ip-10-0-67-244]
 
 ### Recap
