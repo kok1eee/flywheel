@@ -3,6 +3,17 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-16 16:50 [ip-10-0-67-244]
+
+### Recap
+`flywheel set-eval "<cmd>"`（v0.8.5）を実装・commit・install・push まで完走した（gap B 解消＝eval_cmd が spec-ready 以降 immutable で飛行中に直せなかった問題）。本機能自体を `flywheel:adopt` で dogfood し、`adopt→designing→spec-ready→implementing→eval→monitor clean→done` を 0.8.4 hooks 実戦で完走。実装は `bin/flywheel` の `set-eval)` ケース（`monitor-set`/`verify-set` と同型: `fw_state_exists` ガード・**phase 不問**・`FLYWHEEL_HOOK` ガードなし＝CLI の state 書き込みは C-2 対象外、`eval_cmd` と `eval_src=explicit` を書く）+ usage 追従の +14 行。完了条件の eval は **jj/git 外の mktemp -d 内**で `start→set-eval→get` を実機検証して live state を壊さない設計にした（`loop-driver.sh:111` が `cd "$FW_ROOT" && bash -c "$eval_cmd"` で回す前提を確認済み）。diff 14 行で polish は閾値(30)未満のため省略。version を 0.8.4→0.8.5（plugin.json / marketplace.json 2箇所 / README ヘッダ + changelog）。commit `97a8c11a`。**push 済み: `main@origin` が v0.8.5 に前進**（feature + journal handoff の2 commit）。`claude plugin update` で 0.8.4→0.8.5 install 済み（**反映は再起動が必要**）。repo は `kok1eee/flywheel` で **PUBLIC**（journal も公開される運用と確認）。
+
+### Next
+- **再起動して 0.8.5 hooks/CLI を live にする**（今のセッションは 0.8.4。set-eval は次セッションから実効）。再起動後 `flywheel set-eval "<cmd>"` が飛行中に効くか実 goal で確認。
+- ROADMAP の次候補に着手: **★★ H-1（非コード goal が spec-ready で詰まる）** / ★★ マルチレポ対応 / ★ veto 原因示唆 / ★ polish 比例制御。`flywheel-noncode-goal-stuck` メモ参照。
+- set-eval の将来 polish（非ブロッキング、monitor F001 conf72）: eval に `! fw_eval_is_thin` 確認を足すと、`eval_src=explicit` が FR-32 ゲートを外す副作用まで証明できる（今回は採用閾値未満で見送り）。
+- 関連メモ: `flywheel-gap-b-eval-cmd-locked`（解消済み→更新候補）/ `flywheel-roadmap-doc` / `flywheel-noncode-goal-stuck`。
+
 ## 2026-06-16 14:13 [ip-10-0-67-244]
 
 ### Recap
