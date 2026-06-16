@@ -158,6 +158,11 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 
 ## Changelog
 
+### 0.8.4
+- **fix: eval 自動検出を uv/bun/pnpm/yarn 対応** — `fw_detect_eval` が `pytest`/`npm` を直叩きしていたため、uv プロジェクト（`uv.lock`/`[tool.uv]`）では `.venv` の pytest が PATH に無く `command not found`、bun プロジェクトでは npm script が解決できなかった（loop-driver は mise shims しか PATH 前置しない）。lockfile から実ランナーを判定し `uv run` / `bun run` / `pnpm run` / `yarn run` を前置。
+- **FR-32: verification を eval 薄プロジェクト限定の done 前 blocking ゲートに** — `steer:verification` が発行されても実行 0 件だったのは、verification が done 後の optional nudge（`exit 0`）で強制力ゼロだったため。`eval_src=auto`（プロジェクト全体検出＝goal 固有の振る舞いを見ていない薄い eval）のときだけ、`verify-set`（`monitor-set` ミラー）で挙動エビデンス確認を done の条件にする blocking ゲートを追加（`vcap` で空振り防止）。`explicit`（`--eval`）/ `spec`（design.md 完了条件）の厚い eval は対象外。
+- **ROADMAP.md 追加** — dogfooding retrospective の改善 backlog（gap B = eval immutable / H-1 = 非コード goal 詰まり / マルチレポ未対応 等をレバレッジ順に）。
+
 ### 0.8.3
 - **`flywheel:guide` スキル（駆動の決定ガイド）** — flywheel をどう回すか迷ったときの「地図」を1枚で。現在 phase の動的表示（`!flywheel status`）+ ルート選択の決定木（plan route / start / adopt / 既存追加 / bypass）+ 設計フェーズの artifact 別 next + 実装→done loop + よくある詰まり + CLI/env チート。**実挙動は再実装せず hook の live steer に委ねる**方針（ズレたら hook が正、と明記）。user スコープのプラグインなので `/flywheel:guide` でどのセッションからでも呼べる
 
