@@ -1,0 +1,50 @@
+{
+  "phase": "done",
+  "goal": "(会話/journal の合意を結晶化)",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash -n bin/flywheel && grep -q 'set-eval)' bin/flywheel && r=\"$(pwd)\" && d=\"$(mktemp -d)\" && cd \"$d\" && \"$r/bin/flywheel\" start evaltest >/dev/null && \"$r/bin/flywheel\" set-eval 'echo hi && true' >/dev/null && [ \"$(\"$r/bin/flywheel\" get .eval_cmd)\" = 'echo hi && true' ] && [ \"$(\"$r/bin/flywheel\" get .eval_src)\" = 'explicit' ] && cd \"$r\" && rm -rf \"$d\"",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "baseline_rev": "3596765f149016e442c5da0857c80e3288ec28b5",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-16T05:40:29Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-16T05:43:53Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-16T05:44:03Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-16T05:45:38Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-16T05:49:33Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash -n bin/flywheel && grep -q 'set-eval)' bin/flywheel && r=\"$(pwd)\" && d=\"$(mktemp -d)\" && cd \"$d\" && \"$r/bin/flywheel\" start evaltest >/dev/null && \"$r/bin/flywheel\" set-eval 'echo hi && true' >/dev/null && [ \"$(\"$r/bin/flywheel\" get .eval_cmd)\" = 'echo hi && true' ] && [ \"$(\"$r/bin/flywheel\" get .eval_src)\" = 'explicit' ] && cd \"$r\" && rm -rf \"$d\") + monitor clean"
+    }
+  ],
+  "last_fail_count": 0,
+  "verification": null,
+  "verification_attempts": 0
+}

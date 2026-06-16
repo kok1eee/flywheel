@@ -34,6 +34,9 @@ Usage:
   flywheel verify-set <clean|pending> [evidence]
         verification（Skill: flywheel:verification）が挙動エビデンス確認結果を記録する入口（FR-32）。
         eval が薄い（source=auto/fallback）goal でだけ loop-driver が done 前に要求する。
+  flywheel set-eval "<cmd>"
+        現在進行中の goal の eval_cmd を上書きする（出所を explicit に）。phase 不問。
+        飛行中（implementing/eval）に done 判定コマンドを直すための入口（gap B 解消）。
 
 フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
 門の一時無効化: FLYWHEEL_OFF=1
@@ -183,6 +186,17 @@ case "$cmd" in
     fw_set_json verification "$(jq -cn --arg s "$_vs" --arg e "$_ve" \
       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, evidence:$e, ts:$ts}')"
     echo "🔎 flywheel verification: status=$_vs${_ve:+ evidence=$_ve}"
+    ;;
+  set-eval)
+    # gap B: eval_cmd は spec-ready 以降 immutable で、誤った done 判定を飛行中に直せなかった。
+    # CLI からの state 書き込みは C-2 の対象外（禁止はモデルによる state.json 直編集のみ）。
+    # monitor-set/verify-set と同型: state があれば phase 不問で eval_cmd/eval_src を上書きする。
+    [[ $# -lt 1 ]] && { echo "flywheel set-eval \"<cmd>\"" >&2; exit 1; }
+    fw_state_exists || { echo "flywheel set-eval: state がありません（先に start）" >&2; exit 1; }
+    # 人間が明示指定した eval なので出所は explicit（FR-32 の fw_eval_is_thin=auto も自然に外れる）。
+    fw_set_str eval_cmd "$1"
+    fw_set_str eval_src "explicit"
+    echo "🔧 flywheel eval_cmd を更新: $1（出所: explicit）"
     ;;
   reset)
     rm -f "$FW_STATE"

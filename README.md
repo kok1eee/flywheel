@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.3 / MIT License
+v0.8.5 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.5
+- **`flywheel set-eval "<cmd>"` — 飛行中に eval_cmd を直す（gap B 解消）** — `eval_cmd` は spec-ready 以降 immutable で、design.md の完了条件から昇格した eval が誤っていた / 構成が変わった場合、`flywheel reset` で designing からやり直すしかなかった（dogfood で「reset 地獄」を踏んだ）。`monitor-set`/`verify-set` と同型の CLI 入口を追加（`fw_state_exists` ガード・**phase 不問**・`FLYWHEEL_HOOK` ガードなし＝CLI の state 書き込みは C-2 対象外、禁止はモデルによる state.json 直編集のみ）。`eval_cmd` と `eval_src=explicit` を書くので、FR-32 の `fw_eval_is_thin`（`eval_src=auto`）ゲートも自然に外れる。
 
 ### 0.8.4
 - **fix: eval 自動検出を uv/bun/pnpm/yarn 対応** — `fw_detect_eval` が `pytest`/`npm` を直叩きしていたため、uv プロジェクト（`uv.lock`/`[tool.uv]`）では `.venv` の pytest が PATH に無く `command not found`、bun プロジェクトでは npm script が解決できなかった（loop-driver は mise shims しか PATH 前置しない）。lockfile から実ランナーを判定し `uv run` / `bun run` / `pnpm run` / `yarn run` を前置。
