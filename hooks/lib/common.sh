@@ -197,16 +197,29 @@ fw_backlog_count() {
 # プロジェクトファイルから eval(test/lint/型)コマンドを自動検出（--eval 省略時に使う）。
 # 見つからなければ空（loop は degrade で stop 許可）。
 fw_detect_eval() {
-  local r="$FW_ROOT" cmd=""
+  local r="$FW_ROOT" cmd="" run=""
+  # uv プロジェクト（uv.lock or [tool.uv]）なら python ツールを uv run 経由にする。
+  # loop-driver は PATH に mise shims しか前置しないため、.venv にしか無い pytest/ruff を
+  # 直呼びすると command not found になり eval が空振りする（uv プロジェクトでの dogfood で観測）。
+  if [[ -f "$r/uv.lock" ]] || grep -q '^\[tool\.uv\]' "$r/pyproject.toml" 2>/dev/null; then
+    run="uv run "
+  fi
   if [[ -f "$r/pyproject.toml" || -f "$r/pytest.ini" || -f "$r/setup.cfg" ]]; then
-    grep -qE 'ruff' "$r/pyproject.toml" 2>/dev/null && cmd="ruff check"
+    grep -qE 'ruff' "$r/pyproject.toml" 2>/dev/null && cmd="${run}ruff check"
     if [[ -f "$r/pytest.ini" ]] || grep -q 'tool.pytest' "$r/pyproject.toml" 2>/dev/null || [[ -d "$r/tests" ]]; then
-      cmd="${cmd:+$cmd && }pytest"
+      cmd="${cmd:+$cmd && }${run}pytest"
     fi
   elif [[ -f "$r/package.json" ]]; then
-    grep -q '"typecheck"' "$r/package.json" 2>/dev/null && cmd="npm run typecheck"
-    grep -q '"lint"' "$r/package.json" 2>/dev/null && cmd="${cmd:+$cmd && }npm run lint"
-    grep -qE '"test"[[:space:]]*:' "$r/package.json" 2>/dev/null && cmd="${cmd:+$cmd && }npm test"
+    # JS ランナーを lockfile から判定（bun/pnpm/yarn、無ければ npm）。npm 直叩きだと
+    # bun プロジェクトで script が解決できない（uv と同じクラスのバグ）。
+    local js="npm run"
+    if [[ -f "$r/bun.lockb" || -f "$r/bun.lock" ]]; then js="bun run"
+    elif [[ -f "$r/pnpm-lock.yaml" ]]; then js="pnpm run"
+    elif [[ -f "$r/yarn.lock" ]]; then js="yarn run"
+    fi
+    grep -q '"typecheck"' "$r/package.json" 2>/dev/null && cmd="$js typecheck"
+    grep -q '"lint"' "$r/package.json" 2>/dev/null && cmd="${cmd:+$cmd && }$js lint"
+    grep -qE '"test"[[:space:]]*:' "$r/package.json" 2>/dev/null && cmd="${cmd:+$cmd && }$js test"
   elif [[ -f "$r/Cargo.toml" ]]; then
     cmd="cargo test"
   elif [[ -f "$r/go.mod" ]]; then
