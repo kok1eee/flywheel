@@ -52,6 +52,15 @@ monitor_bump() {
   [[ "$n" -ge "$mcap" ]]
 }
 
+# verification ゲート専用カウンタ（FR-32）。monitor と同系統（緑領域専用 hand-back cap）。
+# eval が薄い goal で verification が記録されないまま緑を回り続けるのを cap で止め、人間に返す。
+vcap="${FLYWHEEL_VERIFY_CAP:-$mcap}"
+verification_bump() {
+  local n; n="$(fw_get '.verification_attempts')"; n="${n:-0}"; n=$((n + 1))
+  fw_set_json verification_attempts "$n"
+  [[ "$n" -ge "$vcap" ]]
+}
+
 # polish 段に入る（FR-11・polished フラグで goal につき1回だけ）。
 enter_polish() {  # $1 = steer メッセージの冒頭文脈
   fw_set_json polished true
@@ -172,8 +181,24 @@ EOF
         ;;
     esac
   elif [[ "$mstatus" == "clean" ]]; then
-    # 検証通過 → done へ進む（done 経路は fi の後に続く）
+    # monitor 通過。eval が薄い（source=auto/fallback）なら done の前に verification（挙動エビデンス）を
+    # 要求する（FR-32）。厚い eval（spec/flag）は挙動を既に見ているのでスキップ。
+    if fw_eval_is_thin && [[ "$(fw_get '.verification.status')" != "clean" ]]; then
+      if verification_bump; then
+        # cap 到達: verification が記録されない（skill 不調 等）→ クリアして人間に返す。
+        fw_set_json verification null; fw_set_json verification_attempts 0
+        fw_set_json monitor null; fw_set_json monitor_attempts 0
+        fw_advance implementing "loop-driver: verification cap $vcap 到達 — 人間介入が必要"
+        echo "🛑 flywheel: verification が $vcap 回試行しても記録されません。人間に返します（Skill: flywheel:verification が機能しているか確認してください）。" >&2
+        exit 0
+      fi
+      fw_log_usage "steer:verification"
+      echo "🔍 flywheel: eval 合格・monitor 済み。ただし eval が薄い（source=$(fw_get '.eval_src')=auto・goal 固有の振る舞いを見ていない）ため、done の前に挙動エビデンスを確認してください（Skill: flywheel:verification）。確認後 'flywheel verify-set clean \"<evidence>\"' で記録してください。" >&2
+      exit 2
+    fi
+    # 検証通過（薄くない or verification clean）→ done へ進む（done 経路は fi の後に続く）
     fw_set_json monitor null; fw_set_json monitor_attempts 0
+    fw_set_json verification null; fw_set_json verification_attempts 0
     fw_advance done "loop-driver: eval pass ($eval_cmd) + monitor clean"
   else
     # fail-closed: 未知の verdict（typo 等）は信用しない。クリアして再検証を強制し、done をすり抜けさせない。
@@ -189,8 +214,6 @@ EOF
   fi
   arch="$(fw_archive_plan)"   # FR-12: 完了スペックを退避（plan/ をクリーンに）
   echo "✅ flywheel: eval 合格（$eval_cmd）。goal 達成として done。" >&2
-  echo "   挙動エビデンスも残すなら: Skill: flywheel:verification（eval は静的判定のみ。実際に動かした証拠は別）" >&2
-  fw_log_usage "steer:verification"   # FR-18: steer 従命率の分母
   [[ -n "$arch" ]] && echo "   設計を退避: ${arch#"$FW_ROOT"/}" >&2
   n="$(fw_backlog_count)"
   [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'$FW_CLI next' で次を開始してください。" >&2
@@ -201,6 +224,8 @@ fi
 # 赤領域の暴走は eval veto が cap で止める。監視カウンタは緑領域専用なのでリセットする。
 fw_set_json monitor null
 fw_set_json monitor_attempts 0
+fw_set_json verification null          # FR-32: verification も緑領域専用。緑が崩れたら破棄し次の緑で再要求。
+fw_set_json verification_attempts 0
 
 # 失敗 → veto。cap 到達なら人間に返す（FR-10）、未満なら implementing に戻して継続強制。
 if bump_veto_or_handoff "eval が通りません（$eval_cmd）。最新の失敗:

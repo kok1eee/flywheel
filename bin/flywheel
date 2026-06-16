@@ -31,6 +31,9 @@ Usage:
   flywheel monitor-set <clean|drift|pending> [level] [reason]
         監視 council（Skill: flywheel:monitor）が verdict を記録する入口（FR-30）。
         drift のとき level = implementing|design|requirements を付ける（design/requirements は人間 hand-back）
+  flywheel verify-set <clean|pending> [evidence]
+        verification（Skill: flywheel:verification）が挙動エビデンス確認結果を記録する入口（FR-32）。
+        eval が薄い（source=auto/fallback）goal でだけ loop-driver が done 前に要求する。
 
 フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
 門の一時無効化: FLYWHEEL_OFF=1
@@ -167,6 +170,19 @@ case "$cmd" in
     fw_set_json monitor "$(jq -cn --arg s "$_ms" --arg l "$_ml" --arg r "$_mr" \
       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, level:$l, reason:$r, ts:$ts}')"
     echo "🔎 flywheel monitor: status=$_ms${_ml:+ level=$_ml}${_mr:+ reason=$_mr}"
+    ;;
+  verify-set)
+    # FR-32: verification（挙動エビデンス確認）の verdict を記録する入口。eval が薄い
+    # （eval_source=auto/fallback）goal でだけ loop-driver が done 前にこれを要求する。
+    # status: clean（証拠を確認した）| pending。執行（done 前ブロック）は loop-driver が verification を読んで行う。
+    [[ $# -lt 1 ]] && { echo "flywheel verify-set <clean|pending> [evidence]" >&2; exit 1; }
+    fw_state_exists || { echo "flywheel verify-set: state がありません（先に start）" >&2; exit 1; }
+    _vs="$1"; _ve="${2:-}"
+    # enum 検証（未知 verdict で done-gate をすり抜けさせない。loop-driver も clean 以外は通さない）。
+    case "$_vs" in clean|pending) ;; *) echo "flywheel verify-set: status は clean|pending（受領: '$_vs'）" >&2; exit 1 ;; esac
+    fw_set_json verification "$(jq -cn --arg s "$_vs" --arg e "$_ve" \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, evidence:$e, ts:$ts}')"
+    echo "🔎 flywheel verification: status=$_vs${_ve:+ evidence=$_ve}"
     ;;
   reset)
     rm -f "$FW_STATE"

@@ -334,3 +334,9 @@ fw_log_usage() {
 # phase 述語（phase の意味論を1箇所に集約。各 hook は case 文を持たない）。
 fw_gate_closed() { case "$1" in no-spec|designing) return 0 ;; *) return 1 ;; esac; }   # 実装ブロック中
 fw_work_active() { case "$1" in spec-ready|implementing|polish|eval) return 0 ;; *) return 1 ;; esac; }  # loop が回すべき作業中 phase
+
+# FR-32: eval が「薄い」（goal 固有の振る舞いを見ていない）か。eval_src=auto は
+# プロジェクト全体の test/lint を自動検出しただけで、この goal の振る舞いは見ていない → 薄い。
+# explicit（--eval）/ spec（design.md の完了条件）は人間が goal 固有に書いた eval なので
+# 薄くない（verification ゲートをスキップ）。eval_cmd 空（eval_src 空）は gate に到達しない。
+fw_eval_is_thin() { [[ "$(fw_get '.eval_src')" == "auto" ]]; }
