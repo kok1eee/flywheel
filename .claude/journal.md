@@ -3,6 +3,17 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-17 13:38 [ip-10-0-67-244]
+
+### Recap
+**H-1 を実装し v0.8.7 を出荷**（非コード goal が spec-ready で詰まる問題の解消）。`plan/design.md` を spec として `bin/flywheel` に `go)` ケースを直接追加（経路X＝adopt を使わず clobber 回避）。仕様どおり: `fw_state_exists` ガード → phase 検査（`spec-ready` のみ昇格 / `no-spec`・`designing` は拒否＝設計スキップ裏口防止 / `implementing` 以降 no-op）→ thick eval 検査（`eval_cmd` 非空 ∧ `! fw_eval_is_thin`＝`eval_src ∈ {explicit, spec}`、薄い auto / eval 無しは拒否し set-eval か design.md 完了条件を促す）→ `fw_advance implementing`。`set-eval`/`monitor-set`/`verify-set` と同型（`FLYWHEEL_HOOK` ガードなし＝CLI の state 書き込みは C-2 対象外）。`fw_log_usage "go"` も追加（昇格成功時）+ usage 行追記。**完了条件 eval を mktemp -d 内で live state を壊さず全緑確認**（`/tmp/go_eval_test.sh`: 静的 `bash -n`+`go)` grep / happy: start→design.md→design-validator直叩き→spec-ready(eval_src=spec)→go→implementing / negative1: designing で go 拒否・phase維持 / negative2: spec-ready+thin auto eval で go 拒否・phase維持。`CLAUDE_PLUGIN_DATA` を temp に逃がし本番 CSV 不汚染）。version bump 0.8.6→0.8.7（plugin.json / marketplace.json×2 / README ヘッダ + changelog）。**2 commit を push 済み**（`feat: v0.8.7 flywheel go` + `docs: ROADMAP H-1/gap B 状態更新`、`main@origin` = `db58ab03`）。`claude plugin update` で **0.8.5→0.8.7 install 済み（反映は再起動が必要）**。auto-memory `flywheel-noncode-goal-stuck` と MEMORY.md を「解消済み」に更新。注意: このセッションの hooks は依然 stale（0.8.5）。
+
+### Next
+- **再起動して live 0.8.7 にする**（このセッションは 0.8.5 hooks）。`flywheel go` は再起動後から実効。
+- **実 goal で `flywheel go` を dogfood**: 非コード goal（Bash 運用 / docs のみ）を `flywheel start` → design.md に **goal 固有の完了条件 eval** を書く → validate 合格で spec-ready → `flywheel go` → implementing 昇格 → 停止して loop-driver が eval exit code で done 判定、を一気通貫で確認。thin eval（`auto`）だと go が拒否することも実地確認（`set-eval` で thick 化 → go）。
+- ROADMAP 残候補（レバレッジ順）: ★★ マルチレポ対応（eval_cmd に sibling・polish 両 diff）/ ★ 初回 eval veto の原因示唆（`command not found` → set-eval 誘導）/ ★ polish 比例制御（move/rename は skip）/ ★ 進行中文脈の軽量スナップショット（`flywheel note`）。
+- gotcha: PostToolUse:Write の security hook が文字列 "eval" に誤反応する（`eval_cmd`/完了条件の語。シェル `eval` 未使用なら無視可）。
+
 ## 2026-06-17 13:14 [ip-10-0-67-244]
 
 ### Recap
