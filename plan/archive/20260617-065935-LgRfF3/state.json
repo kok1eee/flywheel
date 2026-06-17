@@ -1,0 +1,50 @@
+{
+  "phase": "done",
+  "goal": "flywheel に task 分解の型と adopt chain を入れる: design.md に Boundary/Depends/Done 付き Tasks セクションを持たせ、backlog に adopt を積んで next で逐次起動できるようにする",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash -n bin/flywheel && grep -qE 'add .*--adopt|--adopt' bin/flywheel && grep -qE 'Boundary|Depends' skills/design/SKILL.md",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "baseline_rev": "772b2a5829900fdb1cea22127a1c5dc6e081717b",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-17T06:46:40Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-17T06:47:39Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-17T06:52:47Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-17T06:55:18Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T06:59:35Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash -n bin/flywheel && grep -qE 'add .*--adopt|--adopt' bin/flywheel && grep -qE 'Boundary|Depends' skills/design/SKILL.md) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0,
+  "verification": null,
+  "verification_attempts": 0
+}

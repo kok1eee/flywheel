@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.9 / MIT License
+v0.8.10 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.10
+- **task 分解の型 + adopt chain（cc-sdd 参考）** — 「plan を phase ごとに作る」運用を flywheel ネイティブに。**(A 型)** `skills/design/SKILL.md` に「## Tasks（`Boundary:`/`Depends:`/`Done:`）」セクションを促す型を追加。task を恣意的な数でなく **design の File Structure Plan（ファイル境界）から構造的に割る**（cc-sdd の Boundary/Depends 由来）。異なる task の Boundary が重なれば統合＝分割ミスを検出できる。**(B adopt chain)** `flywheel add --adopt "<task>"` で backlog に **adopt 経路で**積み、`flywheel next` が `entry` を尊重して**掘らず結晶化起動**する（従来 `next` は start 固定で毎回 designing の掘り直しが挟まった）。`flywheel list` が `[entry]` を表示、`.entry // "start"` で**後方互換**。これで「task を綺麗に割る型 × 各 task を逐次 adopt で回す」が繋がる。flywheel 自身を adopt で起動して dogfood（型を実戦投入 → Boundary 重複で T3→T1 統合を検出 → 監視 council clean → done）。follow-up: 完了条件 eval を grep から mktemp 実行時テストに厚く（監視 council の non-blocking 指摘）。
 
 ### 0.8.9
 - **マルチレポ対応（最小スコープ）— diff/polish が宣言した sibling repo を合算** — flywheel は FW_ROOT 単一リポ前提で、関連リポに跨る goal（例: app + shared-python-lib を同時に直す）では `fw_goal_diff_lines` が FW_ROOT しか測らず polish 判定が**過少カウント**＝「半分しか検証されない」状態だった。`flywheel repos <path>...` で sibling repo を登録（登録時に各リポの baseline=jj `@-`/git `HEAD` を捕捉）し、`fw_goal_diff_lines` が FW_ROOT + 宣言リポの diff を合算する。`fw_repo_baseline`/`fw_repo_dir`/`fw_repo_diff_lines` に per-repo 化（VCS 種別は cwd ベースで自動検出＝jj/git 混在可）。eval は eval_cmd が shell 文字列で既に跨げるため**不変**（`... && uv run --directory ../lib pytest`）。`set-eval`/`monitor-set` と同型の CLI（`fw_state_exists` ガード・phase 不問）。**非スコープ**: cross-repo 編集の gate/自動昇格（#5 は `flywheel go` で代替）/ per-repo の独立 done。flywheel 自身の実 goal で dogfood し、done 前の監視 council が FR-D（`status` の baseline 表示欠落）を drift 検出 → 差し戻し → 修正 → done まで完走。
