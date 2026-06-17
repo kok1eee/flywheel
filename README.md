@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.6 / MIT License
+v0.8.7 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.7
+- **`flywheel go` — 非コード goal を spec-ready から手動昇格（H-1 解消）** — Bash 運用 / docs のみの非コード goal は source 編集が発生せず、`design-gate.sh` の「spec-ready で最初の source 編集 → implementing 昇格」が永久に発火せず **spec-ready で詰まっていた**（逃げは `FLYWHEEL_OFF=1`＝flywheel を切るしかなかった）。偽の source 編集を捏造させず、CLI 入口 `flywheel go` で spec-ready→implementing を昇格する正規ルートを追加（`design-gate` の「最初の source 編集」の非コード版）。eval / veto / polish / monitor / done は既存 loop-driver に委譲（polish は diff≒0 で自動 skip され無害）。**thick eval 必須**（`eval_cmd` 非空 かつ `eval_src ∈ {explicit, spec}`、薄い `auto` eval / eval 無しは拒否し `set-eval` か design.md 完了条件を促す）＝薄い eval での空振り done を入口で防ぐ。**spec-ready 限定**（`designing`/`no-spec` は設計スキップの裏口防止のため拒否、`implementing` 以降は no-op）。`set-eval`/`monitor-set`/`verify-set` と同型（`fw_state_exists` ガード・`FLYWHEEL_HOOK` ガードなし＝CLI の state 書き込みは C-2 対象外）。
 
 ### 0.8.6
 - **handoff に「CLAUDE.md ↔ README drift チェック」を追加（非ブロック nudge）** — CLAUDE.md は更新する道具（`/claude-md-management:revise-claude-md`）はあるのに起動の「きっかけ」が無く、README/実態だけ進んで取り残されがちだった（実運用で README と CLAUDE.md の内容が食い違う事故が発生）。handoff の区切りの瞬間に Step 4 として鮮度チェックを差し込み、CLAUDE.md と README が**両方ある時だけ**・drift シグナル（`jj diff -s`/`git status` で README だけ変更／Recap が規約・手順変更を含む／二重記述の矛盾）がある時だけ、何がズレているか名指しで revise-claude-md を促す。**自動書き換えはしない**（drift の自動修正は新たな drift を生むため判断はユーザー/skill に委ねる）。handoff 本体は絶対にブロックしない。

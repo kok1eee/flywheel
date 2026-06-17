@@ -37,6 +37,10 @@ Usage:
   flywheel set-eval "<cmd>"
         現在進行中の goal の eval_cmd を上書きする（出所を explicit に）。phase 不問。
         飛行中（implementing/eval）に done 判定コマンドを直すための入口（gap B 解消）。
+  flywheel go
+        非コード goal（Bash 運用 / docs のみ）を spec-ready → implementing へ手動昇格（H-1）。
+        source 編集が無く design-gate の自動昇格が効かない goal 用。goal 固有の eval
+        （set-eval か design.md の完了条件）が必須。designing（設計ゲート閉）では拒否。
 
 フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
 門の一時無効化: FLYWHEEL_OFF=1
@@ -197,6 +201,44 @@ case "$cmd" in
     fw_set_str eval_cmd "$1"
     fw_set_str eval_src "explicit"
     echo "🔧 flywheel eval_cmd を更新: $1（出所: explicit）"
+    ;;
+  go)
+    # H-1: 非コード goal（Bash 運用 / docs のみ）は source 編集が発生しないため、
+    # design-gate.sh の「spec-ready で最初の source 編集 → implementing 昇格」が永久に
+    # 発火せず spec-ready で詰まる。`go` はその非コード版＝spec-ready→implementing を
+    # 手動昇格する正規ルート（偽の source 編集を捏造させない）。eval/veto/polish/monitor/done は
+    # 既存 loop-driver に委譲（再利用）。polish は diff≒0 で自動 skip され非コード goal でも無害。
+    # CLI からの state 書き込みは C-2 対象外（禁止はモデルの state.json 直編集のみ）。set-eval と同型。
+    fw_state_exists || { echo "flywheel go: state がありません（先に start）" >&2; exit 1; }
+    _gp="$(fw_phase)"
+    case "$_gp" in
+      spec-ready)
+        # thick eval 必須: eval_cmd 非空 かつ ! fw_eval_is_thin（eval_src ∈ {explicit, spec}）。
+        # 薄い eval（auto = プロジェクト全体の test/lint）/ eval 無しでの空振り done を入口で防ぐ。
+        if [[ -z "$(fw_get '.eval_cmd')" ]] || fw_eval_is_thin; then
+          echo "🚫 flywheel go: この goal には goal 固有の eval（done 判定）がありません（出所: $(fw_get '.eval_src')）。" >&2
+          echo "   go は eval/veto/done を loop-driver に委譲するため、薄い eval だと実装無しでも done になり得ます。" >&2
+          echo "   先に goal 固有の done 条件を設定してください:" >&2
+          echo "     - flywheel set-eval \"<このgoalの合否コマンド>\"  または" >&2
+          echo "     - plan/design.md の「## 完了条件（eval）」に fenced block を書いて validate-plan を通す" >&2
+          exit 1
+        fi
+        fw_advance implementing "flywheel go: non-code goal, no source edit"
+        fw_log_usage "go"
+        echo "🚀 flywheel go: spec-ready → implementing（非コード goal を loop に載せた）"
+        echo "   このまま停止すれば loop-driver が eval（$(fw_get '.eval_cmd')）の exit code で done を判定します。"
+        ;;
+      no-spec|designing)
+        # 設計ゲートが閉じている phase。go を設計スキップの裏口にしない（設計優先思想の根幹）。
+        echo "🚫 flywheel go: 現在 $_gp（設計ゲートが閉じています）。go は設計スキップの裏口にはできません。" >&2
+        echo "   先に設計を固めて spec-ready にしてください（validate-plan 合格で門が開きます）。" >&2
+        exit 1
+        ;;
+      *)
+        # implementing/polish/eval/done: すでに loop に乗っている/終わっている → no-op（情報表示のみ）。
+        echo "flywheel go: 現在 $_gp。すでに implementing 以降のため何もしません（go は spec-ready 専用）。"
+        ;;
+    esac
     ;;
   reset)
     rm -f "$FW_STATE"
