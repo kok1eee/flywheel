@@ -130,7 +130,36 @@ hostname -s
 - サイズ上限・ローテーションはしない。VCS で管理する想定
 - `### Recap` と `### Next` の順序は固定（この順で書く）
 
-## Step 4: ユーザーへの出力
+## Step 4: CLAUDE.md ↔ README drift チェック（非ブロック）
+
+handoff は「区切りの瞬間」なので、ここで一度だけ **CLAUDE.md が README / 実態から取り残されていないか** を確認する。**これは nudge であり handoff を絶対にブロックしない**（鮮度に問題があっても journal 追記は完了済み）。CLAUDE.md は更新する道具（`/claude-md-management:revise-claude-md`）はあるのに起動の「きっかけ」が無くて置き去りになりがち — そのきっかけをここで作る。
+
+### 判定（安い順に。1つでも黒なら nudge）
+
+1. リポジトリルートに `CLAUDE.md` と `README.md` の両方があるか確認（Glob / `ls`）。**両方ある場合のみ**本チェックを行う（対象は「README と CLAUDE.md の食い違い」）。
+2. VCS シグナル: README.md は変更されたが CLAUDE.md は変更されていない（このセッション / 未コミット / 直近コミット）。`jj diff -s` または `git status --short` で `README.md` だけが出ていれば drift の可能性が高い。
+3. セッションシグナル: Step 1 で書いた Recap が「規約 / 構成 / コマンド / セットアップ手順の変更」を含むのに CLAUDE.md にその旨が無い。
+4. 内容シグナル: version 文字列・機能一覧など README と CLAUDE.md が **二重に持つ記述** が食い違っている（両方を軽く読んで明らかな矛盾だけ見る。全文 diff はしない）。
+5. シグナルが無ければ何も出さずに Step 5 へ。
+
+### drift が疑わしいとき（nudge のみ）
+
+何がズレていそうかを **名指しで** 1〜3 行で伝える:
+
+```
+⚠️ CLAUDE.md が README/実態から遅れている可能性:
+   - <例: README は v0.9.0 だが CLAUDE.md は v0.8.5 のまま>
+   - <例: 今セッションで <X> の手順を変えたが CLAUDE.md 未反映>
+   → 同期: /claude-md-management:revise-claude-md（このセッションの学びで CLAUDE.md を更新）
+```
+
+**自分で勝手に CLAUDE.md を書き換えない**。判断と編集はユーザー or revise-claude-md skill に委ねる（drift の自動「修正」は新たな drift を生む）。再発防止の一言を添えてよい:「CLAUDE.md は volatile な記述（版・機能一覧）を README に委譲し、開発規約だけ持つ薄い構成にすると drift しにくい」。
+
+### CLAUDE.md が無い場合（軽い示唆のみ・しつこくしない）
+
+README はあるが CLAUDE.md が無く、非自明な開発手順を持つリポなら 1 行だけ示唆してよい:「このリポは CLAUDE.md が無い。dev 規約を 1 枚に固めるなら built-in `/init` か revise-claude-md」。
+
+## Step 5: ユーザーへの出力
 
 以下のメッセージを表示：
 
@@ -166,6 +195,7 @@ hostname -s
 - **0 件 Next での呼び出し**: AskUserQuestion で確認。使えない環境では `- (未指定)` で記録
 - **hostname 取得失敗時**: ホスト識別なしで進む。EC2 識別は EC2 間連携の補助情報
 - **Recap と Next の役割分担**: Recap は過去志向（何をしたか）、Next は未来志向（何をするか）
+- **CLAUDE.md drift は nudge のみ・非ブロック**: 自分で書き換えず revise-claude-md に委ねる。両方ある時だけ・シグナルがある時だけ出す（毎回出すとノイズ）。CLAUDE.md は薄く保ち volatile な記述を README に委譲すると drift しにくい
 
 <!-- AUTO-GOTCHAS -->
 
