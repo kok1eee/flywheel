@@ -72,40 +72,42 @@ fw_advance() {
     "$FW_STATE" > "$tmp" && mv "$tmp" "$FW_STATE"
 }
 
-# goal 開始時点の基準 revision（FR-20: goal の累積 diff の起点）。
+# goal 開始時点の基準 revision（FR-20: goal の累積 diff の起点）。<dir> の per-repo 版。
 # jj: @ の親（運用ルール上 start 前に `jj new` するので @ は空 = 親が開始時点。
 #     @ 自身の commit_id は snapshot ごとに変わるため使えない）
-# git: HEAD。どちらも無ければ空（degrade: diff 適応は無効で常に polish）。
-fw_baseline_rev() {
-  local r
-  if r=$(cd "$FW_ROOT" && jj log -r '@-' --no-graph -T 'commit_id ++ "\n"' 2>/dev/null | head -1) && [[ -n "$r" ]]; then
+# git: HEAD。どちらも無ければ空（degrade）。cwd を <dir> に変えて jj→git→空を試すので
+# VCS 種別は各リポで自動検出される（FR-A マルチレポ: 宣言した sibling repo の baseline 捕捉に使う）。
+fw_repo_baseline() {
+  local dir="$1" r
+  if r=$(cd "$dir" && jj log -r '@-' --no-graph -T 'commit_id ++ "\n"' 2>/dev/null | head -1) && [[ -n "$r" ]]; then
     printf '%s\n' "$r"; return
   fi
-  if r=$(cd "$FW_ROOT" && git rev-parse HEAD 2>/dev/null); then printf '%s\n' "$r"; return; fi
+  if r=$(cd "$dir" && git rev-parse HEAD 2>/dev/null); then printf '%s\n' "$r"; return; fi
   printf '\n'
 }
+fw_baseline_rev() { fw_repo_baseline "$FW_ROOT"; }   # FW_ROOT 用（従来の呼び出し元はそのまま）
 
-# baseline からの累積「実装」変更行数を出力（FR-20）。
-# - 累積: 途中で commit / push しても測れる（working copy だけだと commit ごとにゼロ
-#   リセットされ「細かく push すると polish が常に skip」になる）
-# - 実装のみ: per-file stat 行を fw_is_impl_write（gate と同じ判定）でフィルタし、
-#   .flywheel/（state 自身）・plan/（spec）・docs/・*.md を計測から除外する
-# - pure git は未 track 新規ファイルが diff --stat に乗らないため別途加算する
-#   （新機能はたいてい新規ファイル。落とすと polish が常に skip になる）。jj は snapshot されるので不要
-# baseline 無し・diff 取得失敗は空（呼び出し側が degrade 判断）。
-fw_goal_diff_lines() {
-  local base out f n total=0
-  base="$(fw_get '.baseline_rev')"
-  [[ -z "$base" ]] && { printf '\n'; return; }
-  if ! out=$(cd "$FW_ROOT" && jj diff --from "$base" --stat 2>/dev/null); then
-    out=$(cd "$FW_ROOT" && git diff --stat "$base" 2>/dev/null) || { printf '\n'; return; }
+# repos の path（FW_ROOT 相対 or 絶対）を実ディレクトリへ解決（FR-A/B 共通。setter と diff で規約を1箇所に）。
+fw_repo_dir() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$FW_ROOT/$1" ;; esac; }
+
+# <root> の <base> からの累積「実装」変更行数（FR-B マルチレポの per-repo コア）。
+# 従来の fw_goal_diff_lines を root 引数化しただけ:
+# - 累積: 途中で commit / push しても測れる（working copy だけだと commit ごとにゼロリセット）
+# - 実装のみ: per-file stat 行を fw_is_impl_write でフィルタ（.flywheel//plan//docs//*.md を除外）。
+#   diff --stat の出力パスは各リポ root 相対なので、sibling でも各リポ root 相対で判定される（FR ④）
+# - pure git は未 track 新規が diff --stat に乗らないため別途加算（jj は snapshot 済みで不要）
+# base 空・root 不在・diff 取得失敗は 0。
+fw_repo_diff_lines() {
+  local root="$1" base="$2" out f n total=0
+  [[ -z "$base" || ! -d "$root" ]] && { printf '0\n'; return; }
+  if ! out=$(cd "$root" && jj diff --from "$base" --stat 2>/dev/null); then
+    out=$(cd "$root" && git diff --stat "$base" 2>/dev/null) || { printf '0\n'; return; }
     while IFS= read -r f; do
       fw_is_impl_write "$f" || continue
-      n=$(wc -l < "$FW_ROOT/$f" 2>/dev/null) || n=0
+      n=$(wc -l < "$root/$f" 2>/dev/null) || n=0
       total=$((total + n))
-    done < <(cd "$FW_ROOT" && git ls-files --others --exclude-standard 2>/dev/null)
+    done < <(cd "$root" && git ls-files --others --exclude-standard 2>/dev/null)
   fi
-  # per-file 行（"path | N +-…"）だけ合算。summary 行（"N files changed…"）は '|' が無く skip される
   while IFS='|' read -r f n; do
     [[ -z "$n" ]] && continue
     f="${f#"${f%%[![:space:]]*}"}"; f="${f%"${f##*[![:space:]]}"}"   # 前後の空白を trim
@@ -113,6 +115,22 @@ fw_goal_diff_lines() {
     n="${n//[^0-9]/}"
     total=$((total + ${n:-0}))
   done <<< "$out"
+  printf '%s\n' "$total"
+}
+
+# baseline からの累積「実装」変更行数を出力（FR-20）。FW_ROOT + 宣言された sibling repo（FR-B）を合算。
+# FW_ROOT の baseline 無しは空で degrade（呼び出し側が常に polish 判断）。
+# sibling は baseline ごと state.repos が持つ（path は FW_ROOT 相対 or 絶対）。
+fw_goal_diff_lines() {
+  local base total n p b
+  base="$(fw_get '.baseline_rev')"
+  [[ -z "$base" ]] && { printf '\n'; return; }
+  total="$(fw_repo_diff_lines "$FW_ROOT" "$base")"
+  while IFS=$'\t' read -r p b; do
+    [[ -z "$p" ]] && continue
+    n="$(fw_repo_diff_lines "$(fw_repo_dir "$p")" "$b")"
+    total=$((total + ${n:-0}))
+  done < <(jq -r '(.repos // [])[] | [.path, .baseline] | @tsv' "$FW_STATE" 2>/dev/null)
   printf '%s\n' "$total"
 }
 

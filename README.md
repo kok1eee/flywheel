@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.8 / MIT License
+v0.8.9 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.9
+- **マルチレポ対応（最小スコープ）— diff/polish が宣言した sibling repo を合算** — flywheel は FW_ROOT 単一リポ前提で、関連リポに跨る goal（例: app + shared-python-lib を同時に直す）では `fw_goal_diff_lines` が FW_ROOT しか測らず polish 判定が**過少カウント**＝「半分しか検証されない」状態だった。`flywheel repos <path>...` で sibling repo を登録（登録時に各リポの baseline=jj `@-`/git `HEAD` を捕捉）し、`fw_goal_diff_lines` が FW_ROOT + 宣言リポの diff を合算する。`fw_repo_baseline`/`fw_repo_dir`/`fw_repo_diff_lines` に per-repo 化（VCS 種別は cwd ベースで自動検出＝jj/git 混在可）。eval は eval_cmd が shell 文字列で既に跨げるため**不変**（`... && uv run --directory ../lib pytest`）。`set-eval`/`monitor-set` と同型の CLI（`fw_state_exists` ガード・phase 不問）。**非スコープ**: cross-repo 編集の gate/自動昇格（#5 は `flywheel go` で代替）/ per-repo の独立 done。flywheel 自身の実 goal で dogfood し、done 前の監視 council が FR-D（`status` の baseline 表示欠落）を drift 検出 → 差し戻し → 修正 → done まで完走。
 
 ### 0.8.8
 - **`flywheel go` の usage 記録を削除（計測の一貫性）** — v0.8.7 で go だけ `fw_log_usage "go"` を記録していたが、同型のはずの `set-eval`/`monitor-set`/`verify-set` はどれも記録しておらず**片肺**だった。さらに evolve は `skill-usage.csv` を「スキル名」として読む（`grep -v ',steer:'` で steer 行だけ除外）ため、裸の `go` 行は無効スキル名の**ノイズ**になる。記録を外して介入系 CLI サブコマンドと挙動を揃えた（起動計測の正は `fw_init` の `goal:*`。go は spec-ready→implementing の昇格であって新規起動ではないので `goal:*` の対象でもない）。挙動（昇格ロジック・ゲート）は v0.8.7 と不変。

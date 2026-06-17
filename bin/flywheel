@@ -41,6 +41,10 @@ Usage:
         非コード goal（Bash 運用 / docs のみ）を spec-ready → implementing へ手動昇格（H-1）。
         source 編集が無く design-gate の自動昇格が効かない goal 用。goal 固有の eval
         （set-eval か design.md の完了条件）が必須。designing（設計ゲート閉）では拒否。
+  flywheel repos <path>...
+        現在の goal に関連する sibling repo を登録（FR-B: diff/polish が宣言リポを合算）。
+        引数なしで一覧。列挙したパスで置き換え（FW_ROOT 相対 or 絶対）。登録時に各リポ baseline を捕捉。
+        eval は eval_cmd に直接書いて跨ぐ（例 "... && uv run --directory ../lib pytest"）。
 
 フロー: ①prompt → ②設計(designing→spec-ready, validate合格で門開く) → ③自動loop(implementing→eval→done)
 門の一時無効化: FLYWHEEL_OFF=1
@@ -148,6 +152,7 @@ case "$cmd" in
     echo "polish  : $(fw_get '.polish')（実施済: $(fw_get '.polished')）"
     echo "veto    : $(fw_get '.veto_count')"
     echo "watch   : focus=$(fw_get '.watch_focus')  monitor=$(fw_get '.monitor.status') $(fw_get '.monitor.level')"
+    _repos="$(fw_get '.repos' | jq -rc '[.[]? | "\(.path) (\(.baseline[0:12]))"] | join(", ")' 2>/dev/null || true)"; echo "repos   : ${_repos:--}"
     echo "history :"
     jq -r '.history[] | "  \(.ts)  \(.from) → \(.to)  [\(.by)]"' "$FW_STATE" 2>/dev/null || true
     ;;
@@ -240,6 +245,27 @@ case "$cmd" in
         echo "flywheel go: 現在 $_gp。すでに implementing 以降のため何もしません（go は spec-ready 専用）。"
         ;;
     esac
+    ;;
+  repos)
+    # FR-A マルチレポ: goal に関連する sibling repo を登録。各 path の baseline を登録時に捕捉する。
+    # set-eval/monitor-set と同型（fw_state_exists ガード・phase 不問・FLYWHEEL_HOOK なし）。
+    # diff/polish 計測が宣言リポを合算する（FR-B）。eval は eval_cmd に直接書いて跨ぐ（本機能はコード未関与）。
+    fw_state_exists || { echo "flywheel repos: state がありません（先に start）" >&2; exit 1; }
+    if [[ $# -eq 0 ]]; then
+      echo "repos:"; fw_get '.repos' | jq -r '.[]? | "  \(.path)  (baseline: \(.baseline[0:12]))"' 2>/dev/null || true
+      exit 0
+    fi
+    _rj="[]"
+    for _p in "$@"; do
+      _dir="$(fw_repo_dir "$_p")"
+      [[ -d "$_dir" ]] || { echo "flywheel repos: ディレクトリが無い: $_p（FW_ROOT 相対 or 絶対）" >&2; exit 1; }
+      _b="$(fw_repo_baseline "$_dir")"
+      [[ -z "$_b" ]] && echo "⚠️ flywheel repos: $_p は jj/git リポに見えません（baseline 空＝diff 計測は 0 扱い）" >&2
+      _rj="$(jq -cn --argjson a "$_rj" --arg p "$_p" --arg b "$_b" '$a + [{path:$p, baseline:$b}]')"
+    done
+    fw_set_json repos "$_rj"
+    echo "🔧 flywheel repos を登録（diff/polish が合算します。列挙したパスで置き換え）:"
+    fw_get '.repos' | jq -r '.[]? | "  \(.path)  (baseline: \(.baseline[0:12]))"' 2>/dev/null || true
     ;;
   reset)
     rm -f "$FW_STATE"

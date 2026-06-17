@@ -1,0 +1,74 @@
+{
+  "phase": "done",
+  "goal": "flywheel をマルチレポ対応にする: diff計測/polish が FW_ROOT 単一リポだけでなく宣言した sibling repo も合算し、関連リポを跨ぐ goal の「半分しか検証されない」問題を解消する（eval は eval_cmd で既に跨げる前提）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash -n bin/flywheel && bash -n hooks/lib/common.sh && grep -qE '^[[:space:]]*repos\\)' bin/flywheel && grep -q 'fw_repo_baseline' hooks/lib/common.sh && bash test/multirepo-diff.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "baseline_rev": "befd846040b93ebd67fa475d78fc9db39c7c8d82",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-17T05:51:03Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-17T05:53:03Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-17T06:05:44Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-17T06:09:51Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T06:09:51Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish (simplify)"
+    },
+    {
+      "ts": "2026-06-17T06:12:01Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T06:18:07Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor drift (impl) → 差し戻し"
+    },
+    {
+      "ts": "2026-06-17T06:18:07Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T06:18:30Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash -n bin/flywheel && bash -n hooks/lib/common.sh && grep -qE '^[[:space:]]*repos\\)' bin/flywheel && grep -q 'fw_repo_baseline' hooks/lib/common.sh && bash test/multirepo-diff.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0,
+  "verification": null,
+  "verification_attempts": 0
+}
