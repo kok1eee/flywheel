@@ -29,6 +29,9 @@ effort: low
 │      → /flywheel:deep-interview（1問ずつ掘る）→ /flywheel:discovery-council（3視点で requirements.md 確定）
 ├ 会話 or handoff(journal) で方針が既に固まっている
 │    → /flywheel:adopt "<一言サマリ>"  → 掘るをスキップし design.md に結晶化
+├ ROADMAP.md に着手したい改善候補がある（複数 phase を一気に回したい）
+│    → /flywheel:add "<項目>" で軽量 grill→backlog に積む（繰り返し）→ /flywheel:next で逐次起動
+│      （ROADMAP=源 → backlog → 実装。flywheel の中核ワークフロー）
 ├ 既存アプリへの機能追加（途中から）
 │    → discovery-council で要件、/flywheel:design で設計、/flywheel:grill で叩く（既存コードは agent が調査委譲）
 └ 些末 / Bash だけで完結する作業

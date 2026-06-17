@@ -11,7 +11,7 @@ argument-hint: "\"<phase の概要>\""
 
 ## 手順（引数があるとき）
 
-1. **軽量 grill — AskUserQuestion で1問ずつ・3点だけ**。`$ARGUMENTS` について、コードベースを調べれば分かることは自分で Glob/Grep/Read して埋め、残りをユーザーに1問ずつ（推奨案を添えて）確認する:
+1. **軽量 grill — AskUserQuestion で1問ずつ・3点だけ**。self-answer してよいのは *事実*（コードに答えがある）だけ。*判断*（この phase の Done/Boundary の決定・優先順位・曖昧点の解釈）はコードに答えが無いので**必ず聞く**（迷ったら聞く側）。`$ARGUMENTS` について、調べれば分かる事実は Glob/Grep/Read で埋め、判断は1問ずつ（推奨案を添えて）確認する:
    - **Done（eval）**: この phase が緑になる合否コマンドは何か（done を機械判定する形。曖昧なら「何が満たされたら完了か」を詰める）
    - **Boundary**: 触るファイル群（task 境界。既存 phase / 他の積んだ phase と Boundary が重ならないか＝重なるなら統合）
    - **依存・曖昧点**: 前提となる phase はあるか / まだ未確定の点はないか

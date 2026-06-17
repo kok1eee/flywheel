@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.11 / MIT License
+v0.8.12 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.12
+- **grill が判断を必ず聞く + ROADMAP をメイン機能に** — **(1)** grill が「コードで答えが出るなら聞くな（肝）」を *判断* にまで広げて self-answer し、ユーザーに質問しなくなる問題（実会話で発生）を矯正。`skills/grill/SKILL.md`（原則 + Gotcha）・`hooks/plan-steer.sh`（FR-24・plan mode steer）・`commands/add.md`（軽量 grill）の3箇所に「**self-answer は *事実*（コードに答えがある）のみ。*判断*（スコープ/トレードオフ/優先順位/命名/案の選択）は必ず聞く・迷ったら聞く側**」を明文化。**(2)** `ROADMAP.md` を flywheel の**中核ワークフローの源**に: ヘッダに「源 → `/flywheel:add`（軽量 grill で phase 化）→ backlog → `/flywheel:next` → 実装」の回し方 + 状態列に「backlog 中」、`skills/guide/SKILL.md` のルート選択に ROADMAP 取り込み枝を追加。新コマンド・テーブル parse は作らず既存の `/add`→`/next` で繋ぐ（「使われない入口を増やさない」原則）。
 
 ### 0.8.11
 - **adopt chain をスラッシュから駆動 + `/add` に軽量 grill-me（雑な add を防ぐ）** — v0.8.10 の adopt chain は CLI のみで入口が無かったため `/flywheel:next`・`/flywheel:add`（`commands/next.md`・`add.md`）を追加。さらに `/flywheel:add` は単に積むのでなく**軽量 grill（Done / Boundary / 依存・曖昧点の3点）で phase を練ってから積む**オーケストレーションにした。`adopt` は掘らない（結晶化）ので、雑な add がそのまま next→design→実装に直行するのを入口で防ぐ。grill 成果は backlog entry の `notes`（Boundary/曖昧点）+ `eval_cmd`（Done）に保存し、`next` 起動時に `state.notes` へ引き継ぐ（別セッション跨ぎでも揮発しない）。`flywheel list` が `[notes ✓]`、`status` が notes 行を表示。`.notes // ""` で後方互換。フル grill は start / plan mode 側に任せ、add は3点に留める。**非スコープ**: `/adopt` の「backlog 全部一気」（auto-chain・loop-driver 変更）は次 phase に切り出し。

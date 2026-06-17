@@ -18,8 +18,8 @@ mode="$(printf '%s' "$INPUT" | jq -r '.permission_mode // empty' 2>/dev/null || 
 
 jq -cn '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext:
 "🛞 flywheel plan-mode（grill 既定動作・FR-24）— この計画作りでは以下を守ること:
-- 計画の決定点を列挙し、コード/リポを見れば答えが出るものは Glob/Grep/Read で self-answer して埋める（人間に聞かない）
-- 残った決定は AskUserQuestion で1問ずつ、あなたの推奨案と理由を添えて詰める
+- 計画の決定点を列挙する。self-answer してよいのは *事実*（実装・既存パターン・コードに答えがある）だけ — Glob/Grep/Read で埋める
+- *判断*（スコープ/トレードオフ/優先順位/命名/どの案か）はコードに答えが無い → 必ず AskUserQuestion で1問ずつ・推奨案と理由を添えて聞く。迷ったら聞く側に倒す（self-answer で済ませない＝質問しない計画は失敗）
 - 計画には「## 非スコープ」と「## 完了条件（eval）」を必ず含める。完了条件は done を機械判定する fenced bash block（1行 = 1コマンド、&& 連結で実行される）
 - 詰め切るまで ExitPlanMode しない（形式不足の計画は plan-gate が差し戻す）
 承認されると flywheel が計画を plan/design.md に保存し、完了条件を eval として done まで自動 loop します。"}}'

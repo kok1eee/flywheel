@@ -1,0 +1,51 @@
+{
+  "phase": "done",
+  "goal": "ROADMAP を flywheel のメイン機能にする: 源→/flywheel:add→backlog→/next の中核ワークフローを確立し、grill が判断を必ず聞くよう事実/判断の峻別を grill・plan-steer・add の3箇所に明文化する",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash -n hooks/plan-steer.sh && grep -qiE '判断' skills/grill/SKILL.md && grep -qiE '判断' hooks/plan-steer.sh && grep -qiE '判断' commands/add.md && grep -qiE 'ROADMAP' skills/guide/SKILL.md && grep -qiE 'backlog' ROADMAP.md",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "",
+  "baseline_rev": "7ca3ef62768d8205e0223407d15b66188aafb889",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-17T08:34:06Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-17T08:34:28Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-17T08:35:26Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-17T08:37:04Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T08:41:00Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash -n hooks/plan-steer.sh && grep -qiE '判断' skills/grill/SKILL.md && grep -qiE '判断' hooks/plan-steer.sh && grep -qiE '判断' commands/add.md && grep -qiE 'ROADMAP' skills/guide/SKILL.md && grep -qiE 'backlog' ROADMAP.md) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0,
+  "verification": null,
+  "verification_attempts": 0
+}
