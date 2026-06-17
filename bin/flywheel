@@ -23,7 +23,7 @@ Usage:
   flywheel status            現在の phase / goal / eval_cmd / 遷移履歴を表示
   flywheel get <jq-filter>   state.json を jq で読む（hook 内部用）
   flywheel reset             state を破棄して dormant に戻す（門が開く）
-  flywheel add "<goal>" [--eval ..][--no-polish][--adopt]   backlog に goal を追加（--adopt: next で掘らず結晶化起動＝adopt chain）
+  flywheel add "<goal>" [--eval ..][--no-polish][--adopt][--notes "<Boundary/曖昧点>"]   backlog に goal を追加（--adopt: next で掘らず結晶化起動＝adopt chain。--notes: /add 軽量 grill の成果を design の種に）
   flywheel list              backlog 一覧
   flywheel next              dormant/done のとき backlog 先頭を pop して start
   flywheel _advance <to> <by>  phase 遷移（hook 内部用。FLYWHEEL_HOOK=1 必須・手動使用は拒否される）
@@ -54,12 +54,13 @@ EOF
 # goal 系コマンド（start/add）の共通フラグ解析 → PARSED_GOAL/PARSED_EVAL/PARSED_POLISH/PARSED_ENTRY
 # --adopt: backlog に「adopt 経路」で積む（next が掘らず結晶化で起動）。start) では使わない（常に掘る）。
 _parse_goal_args() {
-  PARSED_GOAL=""; PARSED_EVAL=""; PARSED_POLISH="true"; PARSED_ENTRY="start"
+  PARSED_GOAL=""; PARSED_EVAL=""; PARSED_POLISH="true"; PARSED_ENTRY="start"; PARSED_NOTES=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --eval) PARSED_EVAL="${2:-}"; shift 2 ;;
       --no-polish) PARSED_POLISH="false"; shift ;;
       --adopt) PARSED_ENTRY="adopt"; shift ;;
+      --notes) PARSED_NOTES="${2:-}"; shift 2 ;;
       *) PARSED_GOAL="$1"; shift ;;
     esac
   done
@@ -67,8 +68,8 @@ _parse_goal_args() {
 
 # goal を起動（start/next/adopt 共通）。前回 plan を退避してから state を初期化。
 # $4 entry: "start"（要件を掘る・既定）/ "adopt"（会話/handoff 合意を結晶化・FR-29）。
-_start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish, $4 entry
-  local goal="$1" eval_cmd="$2" polish="$3" entry="${4:-start}" detected="" eval_src=""
+_start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish, $4 entry, $5 notes
+  local goal="$1" eval_cmd="$2" polish="$3" entry="${4:-start}" notes="${5:-}" detected="" eval_src=""
   if [[ -n "$eval_cmd" ]]; then
     eval_src="explicit"
   else
@@ -76,7 +77,7 @@ _start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish, $4 en
     [[ -n "$eval_cmd" ]] && { detected=" (自動検出)"; eval_src="auto"; }
   fi
   fw_archive_plan >/dev/null   # FR-12: 前回の未完了/完了 plan を退避（無ければ no-op）
-  fw_init "$goal" "$eval_cmd" "$polish" "$eval_src" "$entry"
+  fw_init "$goal" "$eval_cmd" "$polish" "$eval_src" "$entry" "$notes"
   if [[ "$entry" == "adopt" ]]; then
     echo "🎯 flywheel adopt: phase=designing（合意を結晶化）"
   else
@@ -118,9 +119,9 @@ case "$cmd" in
     _parse_goal_args "$@"
     [[ -z "$PARSED_GOAL" ]] && { echo "flywheel add: goal が必要" >&2; exit 1; }
     mkdir -p "$FW_DIR"
-    jq -cn --arg g "$PARSED_GOAL" --arg e "$PARSED_EVAL" --argjson p "$PARSED_POLISH" --arg entry "$PARSED_ENTRY" \
-      '{goal:$g, eval_cmd:$e, polish:$p, entry:$entry}' >> "$FW_BACKLOG"
-    echo "📋 backlog に追加（${PARSED_ENTRY}・残 $(fw_backlog_count) 件）: $PARSED_GOAL"
+    jq -cn --arg g "$PARSED_GOAL" --arg e "$PARSED_EVAL" --argjson p "$PARSED_POLISH" --arg entry "$PARSED_ENTRY" --arg notes "$PARSED_NOTES" \
+      '{goal:$g, eval_cmd:$e, polish:$p, entry:$entry, notes:$notes}' >> "$FW_BACKLOG"
+    echo "📋 backlog に追加（${PARSED_ENTRY}・残 $(fw_backlog_count) 件）: $PARSED_GOAL${PARSED_NOTES:+  [notes 記録済]}"
     ;;
   list)
     [[ -s "$FW_BACKLOG" ]] || { echo "flywheel: backlog は空です"; exit 0; }
@@ -130,7 +131,8 @@ case "$cmd" in
       g="$(printf '%s' "$line" | jq -r '.goal')"
       e="$(printf '%s' "$line" | jq -r '.eval_cmd // "-"')"
       entry="$(printf '%s' "$line" | jq -r '.entry // "start"')"
-      echo "$n. [$entry] $g  [eval: $e]"
+      notes="$(printf '%s' "$line" | jq -r '.notes // ""')"
+      echo "$n. [$entry] $g  [eval: $e]${notes:+  [notes ✓]}"
     done < "$FW_BACKLOG"
     ;;
   next)
@@ -145,8 +147,9 @@ case "$cmd" in
     e="$(printf '%s' "$first" | jq -r '.eval_cmd // ""')"
     p="$(printf '%s' "$first" | jq -r 'if .polish == false then "false" else "true" end')"
     entry="$(printf '%s' "$first" | jq -r '.entry // "start"')"   # adopt chain: 積んだ経路で起動（掘る/結晶化）
+    notes="$(printf '%s' "$first" | jq -r '.notes // ""')"        # /add 軽量 grill の成果を design の種に引き継ぐ
     echo "▶️ backlog から次の goal を起動（${entry}・残 $(fw_backlog_count) 件）"
-    _start_goal "$g" "$e" "$p" "$entry"
+    _start_goal "$g" "$e" "$p" "$entry" "$notes"
     ;;
   status)
     if ! fw_state_exists; then echo "flywheel: dormant（state なし。門は開いている）"; exit 0; fi
@@ -157,6 +160,7 @@ case "$cmd" in
     echo "veto    : $(fw_get '.veto_count')"
     echo "watch   : focus=$(fw_get '.watch_focus')  monitor=$(fw_get '.monitor.status') $(fw_get '.monitor.level')"
     _repos="$(fw_get '.repos' | jq -rc '[.[]? | "\(.path) (\(.baseline[0:12]))"] | join(", ")' 2>/dev/null || true)"; echo "repos   : ${_repos:--}"
+    _notes="$(fw_get '.notes')"; [[ -n "$_notes" ]] && echo "notes   : $_notes"
     echo "history :"
     jq -r '.history[] | "  \(.ts)  \(.from) → \(.to)  [\(.by)]"' "$FW_STATE" 2>/dev/null || true
     ;;

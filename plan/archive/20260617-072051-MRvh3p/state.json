@@ -1,0 +1,50 @@
+{
+  "phase": "done",
+  "goal": "flywheel に /flywheel:next と /flywheel:add スラッシュコマンドを追加し、adopt chain（add --adopt で積んで next で逐次起動）をスラッシュから駆動できるようにする",
+  "design_path": "plan/design.md",
+  "eval_cmd": "test -f commands/next.md && test -f commands/add.md && grep -q 'bin/flywheel\" next' commands/next.md && grep -q 'bin/flywheel\" add' commands/add.md",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "baseline_rev": "43ea41d8bb4e43e2f2795f32cf883ff6d985c89d",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-17T07:13:05Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-17T07:13:33Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-17T07:14:50Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "flywheel go: non-code goal, no source edit"
+    },
+    {
+      "ts": "2026-06-17T07:15:14Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T07:20:51Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (test -f commands/next.md && test -f commands/add.md && grep -q 'bin/flywheel\" next' commands/next.md && grep -q 'bin/flywheel\" add' commands/add.md) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0,
+  "verification": null,
+  "verification_attempts": 0
+}

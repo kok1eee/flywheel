@@ -1,0 +1,81 @@
+{
+  "phase": "done",
+  "goal": "/flywheel:add に軽量 grill-me を組み込む（雑な add を防ぐ）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash -n bin/flywheel && grep -qE '\\-\\-notes' bin/flywheel && grep -qiE 'grill|Done|Boundary|曖昧' commands/add.md && bash test/add-notes.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "baseline_rev": "43ea41d8bb4e43e2f2795f32cf883ff6d985c89d",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-17T07:39:30Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-17T07:39:30Z",
+      "from": "designing",
+      "to": "implementing",
+      "by": "plan-approved: user approved plan"
+    },
+    {
+      "ts": "2026-06-17T07:45:11Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T07:45:11Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish (simplify)"
+    },
+    {
+      "ts": "2026-06-17T07:45:48Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T07:51:04Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: eval fail, veto 1/8"
+    },
+    {
+      "ts": "2026-06-17T07:51:04Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T07:51:05Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: eval fail, veto 2/8"
+    },
+    {
+      "ts": "2026-06-17T07:53:56Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-17T07:54:39Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash -n bin/flywheel && grep -qE '\\-\\-notes' bin/flywheel && grep -qiE 'grill|Done|Boundary|曖昧' commands/add.md && bash test/add-notes.sh) + monitor clean"
+    }
+  ],
+  "approved_mode": "auto",
+  "last_fail_count": 0,
+  "verification": null,
+  "verification_attempts": 0
+}

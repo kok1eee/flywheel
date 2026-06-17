@@ -141,13 +141,14 @@ fw_goal_diff_lines() {
 # entry: designing への入り方 "start"（要件を掘る）/ "adopt"（会話/handoff 合意を結晶化・FR-29）。
 #   fw_designing_steer がこの値で steer を分岐する。
 fw_init() {
-  local goal="$1" eval_cmd="${2:-}" polish="${3:-true}" eval_src="${4:-}" entry="${5:-start}"
+  local goal="$1" eval_cmd="${2:-}" polish="${3:-true}" eval_src="${4:-}" entry="${5:-start}" notes="${6:-}"
   mkdir -p "$FW_DIR"
+  # notes: /add の軽量 grill で詰めた Boundary/曖昧点（next 起動時に backlog entry から引き継ぐ design の種）。
   jq -n --arg goal "$goal" --arg ec "$eval_cmd" --argjson polish "$polish" --arg src "$eval_src" \
-    --arg entry "$entry" \
+    --arg entry "$entry" --arg notes "$notes" \
     --arg base "$(fw_baseline_rev)" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{phase:"designing", goal:$goal, design_path:"plan/design.md", eval_cmd:$ec, eval_src:$src, polish:$polish, polished:false, veto_count:0,
-      entry:$entry, baseline_rev:$base, watch_focus:"", monitor:null, monitor_attempts:0,
+      entry:$entry, notes:$notes, baseline_rev:$base, watch_focus:"", monitor:null, monitor_attempts:0,
       history:[{ts:$ts, from:"no-spec", to:"designing", by:("flywheel " + $entry)}]}' \
     > "$FW_STATE"
   # FR-31: goal-start を全 start 経路で計測（観測漏れ防止）。fw_init は CLI start/next/adopt・

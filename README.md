@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.10 / MIT License
+v0.8.11 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.11
+- **adopt chain をスラッシュから駆動 + `/add` に軽量 grill-me（雑な add を防ぐ）** — v0.8.10 の adopt chain は CLI のみで入口が無かったため `/flywheel:next`・`/flywheel:add`（`commands/next.md`・`add.md`）を追加。さらに `/flywheel:add` は単に積むのでなく**軽量 grill（Done / Boundary / 依存・曖昧点の3点）で phase を練ってから積む**オーケストレーションにした。`adopt` は掘らない（結晶化）ので、雑な add がそのまま next→design→実装に直行するのを入口で防ぐ。grill 成果は backlog entry の `notes`（Boundary/曖昧点）+ `eval_cmd`（Done）に保存し、`next` 起動時に `state.notes` へ引き継ぐ（別セッション跨ぎでも揮発しない）。`flywheel list` が `[notes ✓]`、`status` が notes 行を表示。`.notes // ""` で後方互換。フル grill は start / plan mode 側に任せ、add は3点に留める。**非スコープ**: `/adopt` の「backlog 全部一気」（auto-chain・loop-driver 変更）は次 phase に切り出し。
 
 ### 0.8.10
 - **task 分解の型 + adopt chain（cc-sdd 参考）** — 「plan を phase ごとに作る」運用を flywheel ネイティブに。**(A 型)** `skills/design/SKILL.md` に「## Tasks（`Boundary:`/`Depends:`/`Done:`）」セクションを促す型を追加。task を恣意的な数でなく **design の File Structure Plan（ファイル境界）から構造的に割る**（cc-sdd の Boundary/Depends 由来）。異なる task の Boundary が重なれば統合＝分割ミスを検出できる。**(B adopt chain)** `flywheel add --adopt "<task>"` で backlog に **adopt 経路で**積み、`flywheel next` が `entry` を尊重して**掘らず結晶化起動**する（従来 `next` は start 固定で毎回 designing の掘り直しが挟まった）。`flywheel list` が `[entry]` を表示、`.entry // "start"` で**後方互換**。これで「task を綺麗に割る型 × 各 task を逐次 adopt で回す」が繋がる。flywheel 自身を adopt で起動して dogfood（型を実戦投入 → Boundary 重複で T3→T1 統合を検出 → 監視 council clean → done）。follow-up: 完了条件 eval を grep から mktemp 実行時テストに厚く（監視 council の non-blocking 指摘）。
