@@ -209,6 +209,8 @@ case "$cmd" in
     # 手動昇格する正規ルート（偽の source 編集を捏造させない）。eval/veto/polish/monitor/done は
     # 既存 loop-driver に委譲（再利用）。polish は diff≒0 で自動 skip され非コード goal でも無害。
     # CLI からの state 書き込みは C-2 対象外（禁止はモデルの state.json 直編集のみ）。set-eval と同型。
+    # usage は記録しない（set-eval/monitor-set/verify-set も非記録）。evolve は skill-usage.csv を
+    # 「スキル名」として読む（grep -v ',steer:' で steer 行だけ除外）ため、裸の "go" 行は無効スキル名のノイズになる。
     fw_state_exists || { echo "flywheel go: state がありません（先に start）" >&2; exit 1; }
     _gp="$(fw_phase)"
     case "$_gp" in
@@ -224,7 +226,6 @@ case "$cmd" in
           exit 1
         fi
         fw_advance implementing "flywheel go: non-code goal, no source edit"
-        fw_log_usage "go"
         echo "🚀 flywheel go: spec-ready → implementing（非コード goal を loop に載せた）"
         echo "   このまま停止すれば loop-driver が eval（$(fw_get '.eval_cmd')）の exit code で done を判定します。"
         ;;

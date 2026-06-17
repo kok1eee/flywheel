@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.7 / MIT License
+v0.8.8 / MIT License
 
 ## インストール
 
@@ -157,6 +157,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断、backlog auto-chain。
 
 ## Changelog
+
+### 0.8.8
+- **`flywheel go` の usage 記録を削除（計測の一貫性）** — v0.8.7 で go だけ `fw_log_usage "go"` を記録していたが、同型のはずの `set-eval`/`monitor-set`/`verify-set` はどれも記録しておらず**片肺**だった。さらに evolve は `skill-usage.csv` を「スキル名」として読む（`grep -v ',steer:'` で steer 行だけ除外）ため、裸の `go` 行は無効スキル名の**ノイズ**になる。記録を外して介入系 CLI サブコマンドと挙動を揃えた（起動計測の正は `fw_init` の `goal:*`。go は spec-ready→implementing の昇格であって新規起動ではないので `goal:*` の対象でもない）。挙動（昇格ロジック・ゲート）は v0.8.7 と不変。
 
 ### 0.8.7
 - **`flywheel go` — 非コード goal を spec-ready から手動昇格（H-1 解消）** — Bash 運用 / docs のみの非コード goal は source 編集が発生せず、`design-gate.sh` の「spec-ready で最初の source 編集 → implementing 昇格」が永久に発火せず **spec-ready で詰まっていた**（逃げは `FLYWHEEL_OFF=1`＝flywheel を切るしかなかった）。偽の source 編集を捏造させず、CLI 入口 `flywheel go` で spec-ready→implementing を昇格する正規ルートを追加（`design-gate` の「最初の source 編集」の非コード版）。eval / veto / polish / monitor / done は既存 loop-driver に委譲（polish は diff≒0 で自動 skip され無害）。**thick eval 必須**（`eval_cmd` 非空 かつ `eval_src ∈ {explicit, spec}`、薄い `auto` eval / eval 無しは拒否し `set-eval` か design.md 完了条件を促す）＝薄い eval での空振り done を入口で防ぐ。**spec-ready 限定**（`designing`/`no-spec` は設計スキップの裏口防止のため拒否、`implementing` 以降は no-op）。`set-eval`/`monitor-set`/`verify-set` と同型（`fw_state_exists` ガード・`FLYWHEEL_HOOK` ガードなし＝CLI の state 書き込みは C-2 対象外）。
