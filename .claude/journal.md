@@ -3,6 +3,20 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-17 13:14 [ip-10-0-67-244]
+
+### Recap
+flywheel **v0.8.6 を出荷**（handoff に「CLAUDE.md ↔ README drift チェック」を非ブロック nudge として追加＝`skills/handoff/SKILL.md` の新 Step 4。両方ある時だけ・drift シグナル時だけ `/claude-md-management:revise-claude-md` を名指しで促す。自動書き換えなし）。README changelog + plugin.json + marketplace.json×2 を 0.8.6 に揃え、`docs(ROADMAP)` + `chore(journal handoff)` の未 push 分も一緒に origin/main へ push（`main@origin` = v0.8.6、同期済み）。発端はユーザーの「他リポで README と CLAUDE.md が食い違う」事故。続けて **H-1（非コード goal が spec-ready で詰まる）の設計を grill で確定し `plan/design.md` に結晶化**（実装は未着手）。詰まりの唯一のチョークポイントは `design-gate.sh:58`「最初の source 編集で implementing 昇格」で、非コード goal は source 編集が無く永遠に spec-ready。方針 A（CLI 入口 `flywheel go` で spec-ready→implementing を手動昇格＝偽編集を捏造しない）に決定。grill 5決定: ①implementing 再利用（loop-driver の eval/veto/monitor/done 委譲・polish は diff≒0 で自動skip）②名前は `go`（verify-set と衝突回避）③thick eval 必須（eval_cmd 非空 ∧ `! fw_eval_is_thin`、未満は拒否し set-eval/完了条件を促す）④spec-ready 限定（designing は拒否＝設計スキップ防止、implementing以降 no-op、misuse backstop は thick-eval）⑤完了条件は mktemp フル機能テスト（syntax+grep / happy / negative×2）。注意: このセッションの hooks は **stale**（0.8.6 を今出荷・反映に再起動が必要）。FR-12（`fw_archive_plan`）が done/新goal/放棄で plan/*.md を `plan/archive/<ts>/` へ自動退避することも確認済み。
+
+### Next
+- **再起動して live 0.8.6 にする**（このセッションは stale hooks）。
+- **H-1 実装（経路X = 直接実装。adopt は使わない＝clobber 回避）**: `plan/design.md` を spec として Read → `bin/flywheel` に `go)` ケース追加（`fw_state_exists` ガード → phase が spec-ready 以外なら拒否/no-op → thick eval 検査 → `fw_advance implementing "flywheel go: non-code goal, no source edit"`）+ usage/help 行に `go` + `fw_log_usage "go"`（set-eval/monitor-set/verify-set と同型）。
+- **eval を mktemp で手動実行**（design.md の完了条件: happy=start→design.md(完了条件付)→`FLYWHEEL_HOOK=1 hooks/design-validator.sh` 直接実行→spec-ready→`go`→phase==implementing / negative1=designing で go 拒否 / negative2=thin eval で go 拒否）。live state を壊さない。
+- 緑なら README changelog + version bump（0.8.7・plugin.json/marketplace.json×2/README ヘッダ）→ commit/push。
+- **注意**: adopt を H-1 で使うと `_start_goal`→`fw_archive_plan` が `plan/design.md` を真っ先に archive する（bin/flywheel:68）。経路X は adopt を使わないので design.md は spec として残る。done 後は次 goal 開始時に FR-12 が archive。
+- 実装後メモ更新: `flywheel-noncode-goal-stuck` を「`flywheel go` で解消」に。関連: `flywheel-roadmap-doc` / `tool-hang-vary-tactics`。
+- ROADMAP 他候補: ★★ マルチレポ対応 / ★ veto 原因示唆 / ★ polish 比例制御。
+
 ## 2026-06-16 16:50 [ip-10-0-67-244]
 
 ### Recap
