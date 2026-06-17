@@ -3,6 +3,18 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-17 16:56 [ip-10-0-67-244]
+
+### Recap
+「最近の flywheel 振り返り」から始まり、**計測分析 → 設計議論 → v0.8.10/v0.8.11 出荷**まで一気通貫。①**振り返り**: `skill-usage.csv`（175 events）を集計し経路別傾向を初実測（`goal:start` 21 / `adopt` 6 / `plan` 4）。**推奨経路の plan route が最少**＝ユーザーが「phase を立てて一個ずつ start」するワークフローの自然な帰結と判明（乖離ではない）。verification は steer 9/実行 0（空通過）、evolve はほぼ未稼働も発見。②**設計議論**: ユーザーが cc-sdd（gotalab/cc-sdd）を「task を綺麗に作れる参考」として提示。WebFetch で確認し「task 境界は design の File Structure Plan から導く + Boundary/Depends 注釈」がエッセンスと抽出。③**v0.8.10 出荷**: task 分解の型（`skills/design/SKILL.md` に `## Tasks`(Boundary/Depends/Done)）+ adopt chain（`flywheel add --adopt`→`next` が entry 尊重で掘らず起動）。flywheel 自身で dogfood、監視 council が FR-D（status の baseline 表示欠落）を drift 検出→修正→done。④**v0.8.11 出荷**: adopt chain の**スラッシュ入口**（`/flywheel:next`・`/flywheel:add`）+ **`/add` に軽量 grill-me**（Done/Boundary/曖昧点の3点で練ってから積む。雑な add が adopt で掘られず実装直行するのを防ぐ）。grill 成果は backlog entry の `notes` + `eval_cmd` に保存し `next` で `state.notes` へ引き継ぐ。これは **plan mode + grill で計画 → 承認 → 実装 → 監視 council が test gap を drift 検出→補強→done** という full flow の dogfood になった（go/adopt/task 型/grill 全部使用）。`main@origin` = 54a93511（v0.8.11）。全 install 済み（**反映は要再起動**・現セッションは 0.8.8 hooks）。
+
+### Next
+- **再起動して live 0.8.11 hooks にする**（現セッションは 0.8.8 hooks。`/flywheel:add` の軽量 grill・`/next`・notes 引き継ぎは再起動後から実効）。
+- **`/flywheel:add` を実運用 dogfood**: 複数 phase を `/flywheel:add "<phase>"`（→軽量 grill 3点→`flywheel add --eval --notes --adopt`）で積み、`/flywheel:next` で逐次起動 → `state.notes` が design の種になるか確認。
+- **次 phase: `/adopt` の「backlog 全部一気」（auto-chain）** — v0.8.11 で切り出した。`loop-driver.sh` の done→自動 next 化（無限ループ防止が要る）。既存 `/flywheel:adopt`（単発結晶化）との命名衝突も解決する。Boundary: `commands/`(新規) + `loop-driver.sh`。
+- 振り返りで出た observation（別 phase 候補）: ①verification が steer 9/実行 0 の空通過＝FR-32 実効性調査（薄い eval を作らない運用 or ゲート強化）②evolve がほぼ未稼働＝定期的に回す ③v0.8.9 follow-up（マルチレポ diff の jj path / error 経路テスト）④monitor council の API 529 が頻発（手動 clean で迂回した回あり）。
+- 計測メモ更新済み: `flywheel-goal-start-metrics`（経路別傾向 + plan route の理由 + adopt chain 対応）。
+
 ## 2026-06-17 15:22 [ip-10-0-67-244]
 
 ### Recap
