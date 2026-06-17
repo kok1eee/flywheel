@@ -3,6 +3,18 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-17 15:22 [ip-10-0-67-244]
+
+### Recap
+flywheel の自己改善を**3バージョン連続で出荷**（すべて push + `claude plugin update` 済み、反映は要再起動）。①**v0.8.8**: 前セッションの v0.8.7 `flywheel go` が `fw_log_usage "go"` を記録していた片肺を是正＝記録を削除（`set-eval`/`monitor-set`/`verify-set` も非記録で揃え、evolve が `skill-usage.csv` を「スキル名」として読む＝裸の `go` 行はノイズ、という裏取り付き。`bin/flywheel` の go) から削除、mktemp eval 緑）。②**go の live dogfood**: 再起動後の 0.8.7 hooks で非コード goal（ROADMAP 追記）を start→design.md(完了条件)→spec-ready→`.md` 編集で昇格しない（=従来の詰まり）→`flywheel go`→implementing→loop-driver eval緑→monitor→done まで実機完走（記録を ROADMAP に残し docs commit）。③**v0.8.9 マルチレポ対応（最小スコープ）**: FW_ROOT 単一リポ前提で sibling の diff が polish 判定に乗らない「半分しか検証されない」問題を解消。`flywheel repos <path>...` で sibling を宣言（登録時に baseline=jj `@-`/git `HEAD` 捕捉）→ `fw_goal_diff_lines` が FW_ROOT + `state.repos` を合算。`common.sh` に `fw_repo_baseline`/`fw_repo_dir`/`fw_repo_diff_lines` を追加し per-repo 化（VCS は cwd ベース自動検出で jj/git 混在可）、`bin/flywheel` に `repos)` + status 表示 + usage、`test/multirepo-diff.sh` で git 2リポ合算を検証。**flywheel 自身の実 goal で完走**: grill でスコープを最小確定（#5=cross-repo gate/昇格は `go` に委譲）→ design → 実装 → eval緑 → polish(simplify で `fw_repo_dir` 抽出) → **監視 council が FR-D の実 drift（status が baseline 表示を欠く）を検出して implementing 差し戻し** → 1行修正 → monitor clean → done。客観 verifier が自己採点では見逃す bug を捕まえた好例。`main@origin` = 24b3325c（v0.8.9）。途中、auto mode の Bash 分類器が一時 unavailable で `flywheel start` が数分弾かれた（read-only は通る・待って復帰）。
+
+### Next
+- **再起動して live 0.8.9 hooks にする**（このセッションは 0.8.8 hooks）。
+- **v0.8.9 の follow-up テスト（監視 council 指摘・spec 上は out-of-scope だった）**: `test/multirepo-diff.sh` は git + 未track 経路しか踏んでいない。**jj diff path / per-file `--stat` parse loop / error 経路（sibling 不在・baseline 空・diff 失敗）** が green-but-unverified。cross-repo diff を本番で使うなら jj リポでの合算テストを追加。
+- **マルチレポを実運用で dogfood**: 実際に app + sibling repo に跨る goal で `flywheel repos ../sibling` → 両リポに変更 → polish 判定が合算を見るか、`flywheel status` の repos 行（path + baseline短縮）を確認。
+- ROADMAP 残候補（レバレッジ順）: ★ 初回 eval veto の原因示唆（`command not found`→set-eval 誘導）/ ★ polish 比例制御（move/rename は skip）/ ★ 進行中文脈の軽量スナップショット（`flywheel note`）。
+- 小粒 UX: `monitor-set` は `clean` でも reason だけ付けたいとき level に `""` を挟む必要（`monitor-set clean "" "<reason>"`）。clean/pending は第2引数を reason 扱いにする改善余地（council skill 経由なら実害なし）。
+
 ## 2026-06-17 13:38 [ip-10-0-67-244]
 
 ### Recap
