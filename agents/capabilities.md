@@ -1,11 +1,13 @@
 ---
 name: capabilities
-description: エージェント能力サマリーのリファレンスドキュメント。planner 等の他エージェントから Read で参照される。自動起動せず、選択材料としてのみ使用する。
+description: エージェント能力サマリーのリファレンスドキュメント。各スキル／メインループからエージェント選択の材料として Read で参照される。自動起動せず、選択材料としてのみ使用する。
 ---
 
 # Agent Capabilities
 
-エージェント能力のサマリー。planner によるエージェント選択、および小タスクでのキーワードマッチに使用。
+エージェント能力のサマリー。スキル／メインループでのエージェント選択、および小タスクでのキーワードマッチに使用。
+
+> タスク分解は専用エージェント（旧 `planner`）ではなく、**designer が `design.md` の `## Tasks`(Boundary/Depends/Done) として書く**（v0.8.10〜）。ネイティブ `TaskCreate` は flywheel のコア loop では使わない（完了状態が eval ゲートと並走する二重管理を避けるため。完了判定は eval の exit code 一本。詳細は auto-memory `flywheel-eval-is-sole-done-gate`）。`TaskCreate/TaskUpdate` を使うのは discovery-council 等、自分の作業管理に閉じる範囲のみ。
 
 ## エージェントの原則
 
@@ -123,8 +125,7 @@ TeamCreate → team_name で作成
 | エージェント | 得意分野 | いつ使うか | 呼び出し方 | キーワード |
 |-------------|---------|-----------|-----------|-----------|
 | **analyst** | 現状分析・要件整理 | 新機能の計画前、要件定義作成 | `/discovery-council` | 要件, 分析, 調査, requirements |
-| **designer** | アーキテクチャ設計 | 要件定義完成後、実装の前 | `/design` | 設計, アーキテクチャ, design |
-| **planner** | タスク分解 | 設計書完成後、実装に入る前 | `/task-decomposition` | 計画, タスク, 分解, plan, tasks |
+| **designer** | アーキテクチャ設計＋タスク分解 | 要件定義完成後、実装の前 | `/design` | 設計, アーキテクチャ, design, タスク, 分解 |
 | **scout** | ギャップ・スコープ分析 | 要件定義後、漏れや曖昧点の確認 | `/discovery-council` | 漏れ, 曖昧, スコープ, gaps |
 | **critic** | 計画整合性チェック | 実装後、計画・設計との乖離確認 | `/quality-gate` / ユーザー直接 | 検証, 妥当性, リスク, validate, 整合性 |
 | **debugger** | 体系的デバッグ | バグ・テスト失敗・予期しない動作、sisyphus の3エージェント方式 | ユーザー直接 / sisyphus | バグ, エラー, デバッグ, bug, error |
@@ -149,8 +150,7 @@ TeamCreate → team_name で作成
 
 | エージェント | Input | Processing | Output | Memory 蓄積 |
 |-------------|-------|------------|--------|------------|
-| designer | requirements.md | アーキテクチャ設計 | design.md | ADR の要約、設計パターン適用実績 |
-| planner | design.md | タスク分解、依存関係整理 | TaskCreate（ネイティブタスク） | タスク粒度基準、依存関係パターン |
+| designer | requirements.md | アーキテクチャ設計＋タスク分解（依存関係整理） | design.md（`## Tasks` Boundary/Depends/Done を含む） | ADR の要約、設計パターン適用実績、タスク粒度基準 |
 | critic | requirements + design + tasks | 妥当性検証 | レビューレポート | レビューの落とし穴、リスク評価精度、Calibration Loop |
 
 ### 実装・デバッグ系（WRITE 可）
@@ -177,8 +177,8 @@ TeamCreate → team_name で作成
 Phase 1: Discovery Council（同時 spawn + peer-to-peer）
   researcher ◄──► analyst ◄──► scout
 
-Phase 2-3: Pipeline（順次実行）
-  designer ──▶ planner
+Phase 2-3: 設計
+  designer（design.md に `## Tasks`(Boundary/Depends/Done) で分解まで含む）
 ```
 
 ### レビューフロー（/flywheel:quality-gate）
