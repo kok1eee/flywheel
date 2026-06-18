@@ -3,6 +3,16 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-18 11:51 [ip-10-0-67-244]
+
+### Recap
+直前の 11:44 handoff 後の追補（出荷物は無し・調査のみ）。ユーザーの「flywheel は TaskCreate も使うようになってる?」の問いを契機にコード確認: **flywheel のコア loop（phase state machine + backlog.jsonl）は TaskCreate を使わない**（独自管理）。`skills/discovery-council/SKILL.md` のみ allowed-tools に `TaskCreate/TaskUpdate` を持つ（要件分析チームの作業管理）。今日作った「task 分解の型」は `design.md` の Markdown `## Tasks`(Boundary/Depends/Done) で、ネイティブ TaskCreate とは別レイヤー（二重管理しない設計）。**発見した drift**: `agents/capabilities.md:76,79,153` が「**planner** が TaskCreate でタスク分解」と記述するが、`planner` エージェントは現在の available agents list に**存在しない**（古い記述＝実態 drift）。
+
+### Next
+- **再起動が最優先**（11:44 エントリ参照: 2.1.181 更新 + flywheel 0.8.13 を live に）。
+- **capabilities.md の drift 修正**: `agents/capabilities.md` の planner/TaskCreate 記述を実態に合わせる（planner 不在・task 分解は design.md の `## Tasks` 型に統一）。ROADMAP に ★ で積んで再起動後に `/flywheel:add`→`/next` で回す dogfood 候補。
+- 残りの Next は 11:44 エントリを参照（別セッション knowledge-links の実 DB 反映待ち / /adopt auto-chain / monitor 529 / verification・evolve・マルチレポ follow-up）。
+
 ## 2026-06-18 11:44 [ip-10-0-67-244]
 
 ### Recap
