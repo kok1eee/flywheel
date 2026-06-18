@@ -7,7 +7,8 @@ argument-hint: "\"<phase の概要>\""
 
 引数なしで呼ばれたときは現在の backlog を表示して終了:
 
-!`[ -z "$ARGUMENTS" ] && "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" list || true`
+<!-- $ARGUMENTS は single-quote 包みでシェル解釈から保護（FR-40）。literal ' を含むと壊れる＝稀・bulletproof は非スコープ -->
+!`[ -z '$ARGUMENTS' ] && "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" list || true`
 
 ## 手順（引数があるとき）
 

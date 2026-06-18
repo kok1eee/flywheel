@@ -5,7 +5,8 @@ argument-hint: "<作りたいもの>"
 
 flywheel を起動します（eval は自動検出。明示したいなら後で `flywheel reset` → `flywheel start "..." --eval "..."`）。
 
-!`if [ -n "$ARGUMENTS" ]; then "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" start "$ARGUMENTS"; else "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" status; echo "⚠️ goal が渡されていません（サジェストから Enter だけ押すと引数なしで実行されます）"; fi`
+<!-- $ARGUMENTS は single-quote 包みでシェル解釈から保護（FR-40）。literal ' を含むと壊れる＝稀・bulletproof は非スコープ -->
+!`if [ -n '$ARGUMENTS' ]; then "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" start '$ARGUMENTS'; else "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" status; echo "⚠️ goal が渡されていません（サジェストから Enter だけ押すと引数なしで実行されます）"; fi`
 
 **上の出力に「⚠️ goal が渡されていません」がある場合**: まだ start していません。ユーザーに「何を作りますか？」と1問だけ確認し、得られた goal で `"${CLAUDE_PLUGIN_ROOT}/bin/flywheel" start "<goal>"` を Bash 実行してから、以下に進んでください。
 

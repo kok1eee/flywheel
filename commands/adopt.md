@@ -5,7 +5,8 @@ argument-hint: "<一言サマリ（省略可。省略時は journal の最新 Ne
 
 会話 or handoff の合意を flywheel に載せます（adopt・FR-29）。要件をゼロから掘り直さず、**既に合意した方針を design.md に結晶化**します。
 
-!`if [ -n "$ARGUMENTS" ]; then "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" adopt "$ARGUMENTS"; else "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" adopt "(会話/journal の合意を結晶化)"; fi`
+<!-- $ARGUMENTS は single-quote 包みでシェル解釈から保護（FR-40）。literal ' を含むと壊れる＝稀・bulletproof は非スコープ -->
+!`if [ -n '$ARGUMENTS' ]; then "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" adopt '$ARGUMENTS'; else "${CLAUDE_PLUGIN_ROOT}/bin/flywheel" adopt "(会話/journal の合意を結晶化)"; fi`
 
 設計ゲートが有効になりました（phase=designing）。次に **plan/design.md を結晶化**してください:
 

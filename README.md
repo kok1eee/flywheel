@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.19 / MIT License
+v0.8.20 / MIT License
 
 ## インストール
 
@@ -159,6 +159,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.20
+- **adopt/start/add の `!` 行 args sanitize（FR-40）** — `/flywheel:adopt`・`/flywheel:start`・`/flywheel:add` の `!` 動的注入行が `$ARGUMENTS` を **double-quote** でシェルに埋めており、args に ASCII シェルメタ文字（バッククォート / ASCII 引用符・括弧 / `$`）が入ると `if [ -n "..." ]` 行が **parse error**（行全体が実行前に弾かれ skill 起動失敗）。これは parse error なので `||`/フォールバックでは実行時に拾えない——テキストを「コードとして解釈されない」形にするしかない。`$ARGUMENTS` はプリプロセッサが**シェル実行前に literal 置換**するので、囲みを **single-quote（`'$ARGUMENTS'`）** にすれば置換後テキストをシェル解釈から保護できる（単一行・複雑化ゼロ）。`${CLAUDE_PLUGIN_ROOT}` は実シェル変数なので double-quote のまま。残る穴は args に literal `'` が入った時だけ（ゴール文では稀・heredoc 等の bulletproof 化は非スコープ）。`next.md` は `$ARGUMENTS` 不使用で対象外。`test/adopt-args-sanitize.sh`（C1 3コマンドが single-quote 形 / C2 hostile args で single-quote 形は parse OK・double-quote 形は parse 失敗）。**v0.8.19 FR-39 の dogfood 中に実踏したバグを、その場で backlog 計上 → 次 goal として adopt→修正した連鎖の産物**。
 
 ### 0.8.19
 - **grill の終了判定を self-graded から外す（FR-39・HOTL）** — 詰問（grill / deep-interview / plan route）の「もう十分」を、収束したがるモデル側が自己判定していた＝ self-graded termination。`deep-interview` は「最大7問で打ち切る（負担最小化）」のハードキャップ、`grill` は「共有理解に達するまで」、`plan-steer` は「詰め切るまで」がいずれもモデルの自己判定で、後段 `plan-gate` は形式しか見ず**判断を何問したかを見ない**。結果ユーザーの「握れた感」が **false-positive**（要件は実装の具体に殴られて発掘されるので grill 時点の「もう十分」は早すぎる）。**止めるのは人間**に反転: モデルは終了を自己宣言せず、*判断* の枝が残る限り続け、止める直前に「**未決の判断** の枝はこれ」を提示してから人間に stop/continue を聞く（informed stop）。done の self-graded を潰した原則（FR-34）の **grill 層への適用**——ただし grill は人間が *live で会話にいる* 最中なので **prose のみで足り**（done の無人ゲートと違い non-compliance をその場で捕まえられる）、新 state/CLI/hook/mode は**ゼロ**・むしろ7問マジックナンバーが消えて機構は**減る**。**lever 1 ≠ 無限に聞く**: `事実=self-answer` filter を温存し低価値質問を量産しない。3経路（`skills/deep-interview/SKILL.md`・`skills/grill/SKILL.md`・`hooks/plan-steer.sh`）を反転。`test/grill-termination.sh`（C1 7問撤去 / C2 止めるのは人間 / C3 未決の判断 / C4 filter温存）。completeness-critic（独立 agent 化）と plan-gate での強制は **defer**（人間 live で足りるか dogfood、不足なら次 phase）。**この会話自体が deep grill になり、合意を adopt で結晶化して dogfood**。

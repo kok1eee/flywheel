@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "adopt の args sanitize: /flywheel:adopt の動的注入行が特殊文字 args で shell parse error を起こすのを直す",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/adopt-args-sanitize.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "notes": "",
+  "baseline_rev": "3d91b6127d248e4e825ba3c6f0b1d8675afeaac8",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T09:03:18Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-18T09:14:50Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T09:17:05Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T09:20:01Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T09:20:01Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-18T09:26:24Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T09:26:24Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/adopt-args-sanitize.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}
