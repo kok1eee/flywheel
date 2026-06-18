@@ -266,9 +266,20 @@ if [[ -n "$cur_fails" && -n "$prev_fails" ]]; then
   fi
 fi
 
+# eval_cmd 自体が解決できていないシグナル（コマンド名ミス・未インストール・パス誤り）を検出したら、
+# 「直すべきはコードでなく eval_cmd」と示唆する。最初の veto から出して長い迂回を短絡する。
+# 通常のテスト失敗（assert 落ち）には下記パターンが出ないので誤検知しにくい。
+cmd_hint=""
+# シェル(bash -c 経由)が eval_cmd を解決できなかった signal だけに絞る＝行頭/パスの shell プレフィクス付き。
+# 裸の "No such file or directory" / ": not found" は通常のテスト失敗出力（例: 'config.yml: No such
+# file or directory'）にも現れるので誤検知する → プレフィクスで弾く。
+if printf '%s' "$out" | grep -qE '(^|/)(bash|zsh|sh|dash|ash): .*(command not found|No such file or directory|: not found)'; then
+  cmd_hint=" ⚠️ eval_cmd が解決できていない可能性（シェルが command not found）。コードでなく eval_cmd の指定ミスなら 'flywheel set-eval \"<正しいコマンド>\"' で直せます。"
+fi
+
 fw_advance implementing "loop-driver: eval fail, veto $veto/$cap"
 cat >&2 <<EOF
-🔁 flywheel: eval 未達（$eval_cmd, veto $veto/$cap）。done にできません。修正して続けてください。$hint$trend
+🔁 flywheel: eval 未達（$eval_cmd, veto $veto/$cap）。done にできません。修正して続けてください。$hint$trend$cmd_hint
 goal: $(fw_get '.goal')
 失敗内容:
 $(printf '%s' "$out" | tail -15)

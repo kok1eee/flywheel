@@ -27,13 +27,20 @@ state() { echo "$REPO_T/.flywheel/state.json"; }
 getf()  { jq -r "$1" "$(state)"; }
 blc()   { local b="$REPO_T/.flywheel/backlog.jsonl"; [ -s "$b" ] && grep -c . "$b" || echo 0; }
 
-# goal A を done 直前の姿（implementing + 全ゲート緑）に整える
-setup_done_ready() {
+# 任意 eval_cmd で「実装中（eval が走る）」状態を作る素地。fresh start なので veto=0。
+setup_impl() {  # $1 = eval_cmd
   rm -rf "$REPO_T/.flywheel" "$REPO_T/plan"
-  "$FW" start "goal A" --eval "true" >/dev/null 2>&1 || fail "flywheel start 失敗"
+  "$FW" start "goal A" --eval "$1" >/dev/null 2>&1 || fail "flywheel start 失敗"
   local s; s="$(state)"
-  jq '.phase="implementing" | .eval_cmd="true" | .eval_src="explicit" | .polish=false | .polished=true | .monitor={status:"clean"}' \
+  jq '.phase="implementing" | .eval_src="explicit" | .polish=false | .polished=true' \
     "$s" > "$s.tmp" && mv "$s.tmp" "$s" || fail "state 整形失敗"
+}
+
+# goal A を done 直前の姿（implementing + eval 緑(true) + monitor clean）に整える＝setup_impl の特化。
+setup_done_ready() {
+  setup_impl "true"
+  local s; s="$(state)"
+  jq '.monitor={status:"clean"}' "$s" > "$s.tmp" && mv "$s.tmp" "$s" || fail "monitor 整形失敗"
 }
 
 run_hook() { FLYWHEEL_HOOK=1 bash "$HOOK" </dev/null >/dev/null 2>&1; echo $?; }

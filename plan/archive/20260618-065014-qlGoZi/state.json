@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "polish 比例制御: 純粋な move/rename は simplify を skip する",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/polish-rename-skip.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "notes": "Boundary: hooks/lib/common.sh(should_polish/diff 系) + loop-driver.sh + test/。アイデア: 純粋な move/rename(追加≈削除で対称、または rename で内容不変)の diff は simplify polish を skip(無意味な simplify ターン削減)。曖昧点(start で掘る): move/rename の検出方法(jj/git の rename 検知 or 追加行≈削除行の閾値) / reset 後の再 baseline で min-diff 閾値が無効化される件を対象に含むか。",
+  "baseline_rev": "e79823e70be00287a7bf24a24c923e187edb7c69",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T06:27:31Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-18T06:41:24Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T06:41:33Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T06:43:30Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T06:43:30Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish (simplify)"
+    },
+    {
+      "ts": "2026-06-18T06:50:13Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T06:50:14Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/polish-rename-skip.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}

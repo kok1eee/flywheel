@@ -3,6 +3,22 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-18 16:00 [ip-10-0-67-244]
+
+### Recap
+15:02 の v0.8.16(FR-35) 出荷に続けて、**チェーン dogfood + FR-36/37 + docs 一式（v0.8.17）を出荷**。
+**チェーン dogfood（本セッションの山場）**: `/flywheel:add` で adopt(eval-veto-hint) + start(polish比例制御) を積み→`/flywheel:next` で起動。**①FR-36（adopt）done → ②done→start 連鎖で FR-35 の go/no-go grill が実発火**（ユーザー go 判断）→ **③FR-37（start）done** まで一気通貫。FR-33 連鎖・FR-35 go/no-go・**監視 council の本物 drift-catch を 2 度ライブで検証**（FR-36 で grep 誤検知を council が検出→差し戻し→修正→clean）。
+**FR-36（v0.8.17）初回 eval veto の原因示唆**: eval-fail steer に `$cmd_hint`。シェル解決失敗（`bash -c` 経由）だけを **shell プレフィクス付き grep**（`(^|/)(bash|zsh|sh|dash|ash): .*(command not found|No such file or directory|: not found)`）で検出し set-eval を促す。裸の `No such file` 等は通常失敗にも出るので弾く（C3 誤検知ガード）。`test/eval-veto-hint.sh`(3)。
+**FR-37（v0.8.17）polish 比例制御**: 調査で「**pure rename は jj/git 既定で 0 行 collapse＝既に skip 済み**」と判明 → スコープを `fw_repo_diff_lines` git fallback の明示 `-M`（`diff.renames=false` でも config 非依存に collapse）に絞った。copy(`-C`)は重複＝simplify 対象なので skip させない。`test/polish-rename-skip.sh`(2)。**ファイル間コード移動(add≈del)・reset 再 baseline は defer**。
+**docs 同期**: README(v0.8.17・NO_CHAIN 説明・loop-driver 行・0.8.16/0.8.17 changelog) / ROADMAP(FR-36/37 ✅ + 融合項目 + FR-37 follow-up) / `skills/guide`(done 自動連鎖) / **CLAUDE.md 新規**（C-2 不変条件・state machine・dogfood 規約・test/version/jj 規約に絞った working ガイド）。`verification` skill は FR-34 で既に最新＝変更なし。共有テストハーネスを `test/chain-lib.sh` に抽出（`setup_impl`/`setup_done_ready`）。全 7 テストスイート緑。
+`main@origin` 予定 = **v0.8.17**。
+
+### Next
+- **polish+monitor steer の融合**（ユーザー観察「monitor を一緒に動かせば早い」→ ROADMAP loop 制御 epic に追加済）: done 前ゲートの polish(simplify) と monitor を1本の steer に束ね 3往復→2往復に。eval は毎停止で独立に回るので安全（polish が壊しても次停止で拾い done をすり抜けない）。トレードオフ=polish が eval を壊した稀ケースで council 1回無駄打ち。**次の実装候補**。
+- **FR-37 follow-up**（ROADMAP）: ①ファイル間コード移動（add≈del 対称）の skip（--numstat ヒューリスティック・誤 skip リスクで今回 decline）②reset 再 baseline で min-diff 無効化（baseline 捕捉タイミング）。
+- **残り backlog**: evolve 定期稼働 / マルチレポ follow-up テスト（multirepo-diff.sh の jj path・error 経路）/ ★ `flywheel note`（文脈スナップショット）/ monitor 529（server-side・対処不可）。
+- **HOTL epic**: phase1(FR-34)・phase2(FR-35) 完了。チェーン dogfood で実運用挙動を確認済み。次の自律度引き上げは融合(往復削減)が筋。
+
 ## 2026-06-18 15:02 [ip-10-0-67-244]
 
 ### Recap

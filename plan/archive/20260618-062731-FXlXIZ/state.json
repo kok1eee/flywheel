@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "初回 eval veto で command-not-found を検出したら set-eval を促すヒントを出す",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/eval-veto-hint.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: hooks/loop-driver.sh の eval 失敗分岐(rc!=0) + test/。設計: eval 出力が command-not-found 系(command not found / No such file or directory / : not found)にマッチしたら veto メッセージに『eval_cmd 自体が怪しい→flywheel set-eval で直せ』のヒントを付す。通常のテスト失敗(assert 落ち等)には出さない。完了条件: test/eval-veto-hint.sh で (a)command-not-found 出力→ヒント有 (b)通常失敗→ヒント無 を検証。",
+  "baseline_rev": "e79823e70be00287a7bf24a24c923e187edb7c69",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T06:14:22Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-18T06:15:46Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T06:16:12Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T06:17:13Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T06:17:14Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish (simplify)"
+    },
+    {
+      "ts": "2026-06-18T06:27:30Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T06:27:31Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/eval-veto-hint.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}

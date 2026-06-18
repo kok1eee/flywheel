@@ -101,7 +101,10 @@ fw_repo_diff_lines() {
   local root="$1" base="$2" out f n total=0
   [[ -z "$base" || ! -d "$root" ]] && { printf '0\n'; return; }
   if ! out=$(cd "$root" && jj diff --from "$base" --stat 2>/dev/null); then
-    out=$(cd "$root" && git diff --stat "$base" 2>/dev/null) || { printf '0\n'; return; }
+    # -M(--find-renames): rename を1エントリ（変更行のみ）に collapse。diff.renames config に依存
+    # せず純粋 rename を 0 行扱いにし、無意味な polish 発火を防ぐ（jj path は既定で rename 検出）。
+    # -C(copy) は足さない: コピー＝重複＝simplify が拾うべき対象なので skip させない。
+    out=$(cd "$root" && git diff -M --stat "$base" 2>/dev/null) || { printf '0\n'; return; }
     while IFS= read -r f; do
       fw_is_impl_write "$f" || continue
       n=$(wc -l < "$root/$f" 2>/dev/null) || n=0
