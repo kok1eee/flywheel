@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.18 / MIT License
+v0.8.19 / MIT License
 
 ## インストール
 
@@ -159,6 +159,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.19
+- **grill の終了判定を self-graded から外す（FR-39・HOTL）** — 詰問（grill / deep-interview / plan route）の「もう十分」を、収束したがるモデル側が自己判定していた＝ self-graded termination。`deep-interview` は「最大7問で打ち切る（負担最小化）」のハードキャップ、`grill` は「共有理解に達するまで」、`plan-steer` は「詰め切るまで」がいずれもモデルの自己判定で、後段 `plan-gate` は形式しか見ず**判断を何問したかを見ない**。結果ユーザーの「握れた感」が **false-positive**（要件は実装の具体に殴られて発掘されるので grill 時点の「もう十分」は早すぎる）。**止めるのは人間**に反転: モデルは終了を自己宣言せず、*判断* の枝が残る限り続け、止める直前に「**未決の判断** の枝はこれ」を提示してから人間に stop/continue を聞く（informed stop）。done の self-graded を潰した原則（FR-34）の **grill 層への適用**——ただし grill は人間が *live で会話にいる* 最中なので **prose のみで足り**（done の無人ゲートと違い non-compliance をその場で捕まえられる）、新 state/CLI/hook/mode は**ゼロ**・むしろ7問マジックナンバーが消えて機構は**減る**。**lever 1 ≠ 無限に聞く**: `事実=self-answer` filter を温存し低価値質問を量産しない。3経路（`skills/deep-interview/SKILL.md`・`skills/grill/SKILL.md`・`hooks/plan-steer.sh`）を反転。`test/grill-termination.sh`（C1 7問撤去 / C2 止めるのは人間 / C3 未決の判断 / C4 filter温存）。completeness-critic（独立 agent 化）と plan-gate での強制は **defer**（人間 live で足りるか dogfood、不足なら次 phase）。**この会話自体が deep grill になり、合意を adopt で結晶化して dogfood**。
 
 ### 0.8.18
 - **polish+monitor steer の融合 — done 前ゲートの往復を 3→2 に（FR-38）** — done 前は polish(simplify) と monitor council の2段だが、`enter_polish` が `exit 2` で monitor ゲート手前で抜けるため `simplify(stop)→monitor(stop)→done` と毎段で停止→Stop hook→再開のハンドシェイクを挟んでいた。polish が要るとき **1 本の steer で「simplify→monitor を同じターンで」** 実行させ、monitor を pending に prime する（次停止で eval緑 + monitor verdict を一括判定 → done）。**逐次パイプラインであって並列ではない**: monitor は simplify 後の最終コードを検証するので順序固定、削るのは段間の停止1回分だけで挙動の中身は不変。**安全性**: eval は毎停止で独立に回るので simplify が eval を壊しても次停止の eval-fail が拾い done をすり抜けない / model が monitor を飛ばしても prime した pending を次停止の monitor ゲートが拾って再 steer（従来挙動へ安全に degrade）。`enter_polish` に `$2="monitor"` モードを足して統合（新関数を増やさない）。**デフォルト ON・`FLYWHEEL_NO_FUSE=1`** で従来の分離2ステップに戻すエスケープハッチ。eval_cmd 未設定経路の polish（1 引数呼び出し）は `${2:-}` で従来の simplify-only 枝に入り不変。monitor ゲート本体も不変。`test/polish-monitor-fuse.sh`(C1 融合 / C2 エスケープ / C3 融合 entry→clean→done / C4 degrade 安全)。**FR-38 自身の loop で自己 dogfood**（融合 steer が自分に発火 → テストが set -u バグを捕捉 → 監視 council が test カバレッジ drift を検出 → 修正 → clean）。
