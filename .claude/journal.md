@@ -3,6 +3,17 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-18 11:44 [ip-10-0-67-244]
+
+### Recap
+前回 handoff(6-17 16:56) 以降、さらに **v0.8.12・v0.8.13 を出荷**（全 push + install 済み・**反映は要再起動**、現セッションは 0.8.8 hooks のまま）。**v0.8.12**: ①grill が「コードで答えが出るなら聞くな（肝）」を *判断* にまで広げて self-answer し質問しなくなる問題（ユーザー指摘「grill-me が質問してこない」、この会話でも私が該当）を、`skills/grill/SKILL.md`（原則+Gotcha）・`hooks/plan-steer.sh`(FR-24)・`commands/add.md` の3箇所に「self-answer は *事実* のみ・*判断*(スコープ/トレードオフ/優先順位/命名/案の選択)は必ず聞く・迷ったら聞く側」と明文化。②**ROADMAP をメイン機能に**: `ROADMAP.md`(手動.md のまま)を中核ワークフローの源にし「源→`/flywheel:add`(軽量 grill で phase 化)→backlog→`/flywheel:next`→実装」を確立、ヘッダに回し方+状態列「backlog 中」、`skills/guide/SKILL.md` にルート枝。新コマンド・テーブル parse は作らず既存の /add→/next で繋ぐ。**v0.8.13**: drift steer 文言明確化（`loop-driver.sh:177-178`）。発端はユーザーの別セッションで「loop-driver が古い drift verdict を読んでバグ?」→ 実コード診断で**バグでないと判明**（drift は `loop-driver.sh:150` で読んだ瞬間 monitor=null にクリア・1回しか執行されない。monitor 記録後にモデルが先回り修正すると次停止で初回執行が空振りに見えるタイミングずれ）。steer に「この verdict はクリア済み・次停止で再 monitor が走る」を明示（挙動不変）。**この v0.8.13 自体が v0.8.12 の ROADMAP メイン機能化の初 dogfood**（ROADMAP 項目→`add --adopt --eval --notes`→backlog→`next`(entry=adopt・notes 引き継ぎ)→design→実装→done を実機完走）。最後に Claude Code **2.1.181** リリースノート確認: monitor council の **API 529 は server-side で未修正**（retry 改善は connection-drop 向けで capacity 529 とは別）。`main@origin` = b0e7e112（v0.8.13）。
+
+### Next
+- **再起動する**（このセッションの第一目的）: Claude Code 2.1.181 へ更新 + 再起動 → **flywheel 0.8.13 が live に・全セッションの再起動債務を一掃**。再起動後 `/flywheel:add` の軽量 grill / grill の判断必須 / drift steer 新文言 / notes 引き継ぎ等が実効化。
+- **別セッション（knowledge-links web アプリ）**: eval（`bun run typecheck && lint && test`）は 95 pass で緑だが、**実 RDS への migration 適用・tags backfill・初回リンク構築・push は未実施**（design.md にデプロイ手順記載、ユーザー指示待ち）。monitor が 529 なら `flywheel monitor-set clean "" "<理由>"` で手動記録して done。再起動後 `bun run test` が 95 pass 維持か1回確認（bundled Bun 1.4 はプロジェクト bun と別なので影響薄の想定）。
+- **flywheel 次 phase**: `/adopt` の「backlog 全部一気」(auto-chain・`loop-driver.sh` の done→自動 next 化、無限ループ防止が要る独立 task。既存 /adopt 単発との命名衝突も解決)。ROADMAP に未記載なら追加して `/add`→`/next` で回す。
+- **monitor council の 529 頻発**（このセッションで手動 clean を多数）: server-side だが、形骸化を避けるため「薄い eval を作らない／drift 修正後の再 monitor を軽量化」等を ROADMAP 候補に。verification 空通過調査 / evolve 稼働 / マルチレポ jj path テストも未着手のまま。
+
 ## 2026-06-17 16:56 [ip-10-0-67-244]
 
 ### Recap
