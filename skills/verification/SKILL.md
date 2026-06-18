@@ -100,12 +100,13 @@ effort: medium
 
 ---
 
-## flywheel の eval ゲートとの関係
+## flywheel の done 判定との関係（FR-34）
 
-- **verification**（この skill）: 個別の完了宣言に対する証拠確認（ミクロ）。実装者の自己検証 + 挙動検証。
-- **flywheel eval ゲート**（loop-driver）: goal 全体の done 判定（マクロ）。`eval_cmd`（ty/ruff/test）の exit code で決定論的に判定し、未達なら implementing に戻す。
+この skill は **flywheel の done ゲートではない**（汎用の自己検証規律＝任意起動）。done を閉めるのは **eval（客観 exit code）と monitor council（独立）の2つだけ**。かつて存在した self-graded な verification ゲート（`verify-set`・FR-32）は撤去した — 自己申告で素通りでき、HOTL（human on the loop）で信用できないため。
 
-verification で個々のタスクの完了を確認し、flywheel の eval で goal 全体の done を機械判定する。
+- **eval ゲート**（loop-driver）: goal 全体の done 判定。`eval_cmd`（ty/ruff/test）の exit code で決定論判定。
+- **monitor council**（Skill: flywheel:monitor）: done 直前の独立 drift 検証。**runnable な変更の挙動検証はここに統合**——overseer が**この skill の「挙動検証」手順で smoke を実行**し、エビデンスを Read-only 観測者（observer-behavior）に判定させる（動かすのは overseer・判定は独立）。
+- **この skill 単体**: 完了宣言一般に対する証拠確認の規律（ミクロ）。手動起動や、monitor overseer の smoke 手順として参照される。
 
 ## Memory 蓄積
 

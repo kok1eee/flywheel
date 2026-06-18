@@ -31,9 +31,6 @@ Usage:
   flywheel monitor-set <clean|drift|pending> [level] [reason]
         監視 council（Skill: flywheel:monitor）が verdict を記録する入口（FR-30）。
         drift のとき level = implementing|design|requirements を付ける（design/requirements は人間 hand-back）
-  flywheel verify-set <clean|pending> [evidence]
-        verification（Skill: flywheel:verification）が挙動エビデンス確認結果を記録する入口（FR-32）。
-        eval が薄い（source=auto/fallback）goal でだけ loop-driver が done 前に要求する。
   flywheel set-eval "<cmd>"
         現在進行中の goal の eval_cmd を上書きする（出所を explicit に）。phase 不問。
         飛行中（implementing/eval）に done 判定コマンドを直すための入口（gap B 解消）。
@@ -191,26 +188,13 @@ case "$cmd" in
       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, level:$l, reason:$r, ts:$ts}')"
     echo "🔎 flywheel monitor: status=$_ms${_ml:+ level=$_ml}${_mr:+ reason=$_mr}"
     ;;
-  verify-set)
-    # FR-32: verification（挙動エビデンス確認）の verdict を記録する入口。eval が薄い
-    # （eval_source=auto/fallback）goal でだけ loop-driver が done 前にこれを要求する。
-    # status: clean（証拠を確認した）| pending。執行（done 前ブロック）は loop-driver が verification を読んで行う。
-    [[ $# -lt 1 ]] && { echo "flywheel verify-set <clean|pending> [evidence]" >&2; exit 1; }
-    fw_state_exists || { echo "flywheel verify-set: state がありません（先に start）" >&2; exit 1; }
-    _vs="$1"; _ve="${2:-}"
-    # enum 検証（未知 verdict で done-gate をすり抜けさせない。loop-driver も clean 以外は通さない）。
-    case "$_vs" in clean|pending) ;; *) echo "flywheel verify-set: status は clean|pending（受領: '$_vs'）" >&2; exit 1 ;; esac
-    fw_set_json verification "$(jq -cn --arg s "$_vs" --arg e "$_ve" \
-      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, evidence:$e, ts:$ts}')"
-    echo "🔎 flywheel verification: status=$_vs${_ve:+ evidence=$_ve}"
-    ;;
   set-eval)
     # gap B: eval_cmd は spec-ready 以降 immutable で、誤った done 判定を飛行中に直せなかった。
     # CLI からの state 書き込みは C-2 の対象外（禁止はモデルによる state.json 直編集のみ）。
-    # monitor-set/verify-set と同型: state があれば phase 不問で eval_cmd/eval_src を上書きする。
+    # monitor-set と同型: state があれば phase 不問で eval_cmd/eval_src を上書きする。
     [[ $# -lt 1 ]] && { echo "flywheel set-eval \"<cmd>\"" >&2; exit 1; }
     fw_state_exists || { echo "flywheel set-eval: state がありません（先に start）" >&2; exit 1; }
-    # 人間が明示指定した eval なので出所は explicit（FR-32 の fw_eval_is_thin=auto も自然に外れる）。
+    # 人間が明示指定した eval なので出所は explicit（go の thick-eval 判定 fw_eval_is_thin=auto も自然に外れる）。
     fw_set_str eval_cmd "$1"
     fw_set_str eval_src "explicit"
     echo "🔧 flywheel eval_cmd を更新: $1（出所: explicit）"
@@ -222,7 +206,7 @@ case "$cmd" in
     # 手動昇格する正規ルート（偽の source 編集を捏造させない）。eval/veto/polish/monitor/done は
     # 既存 loop-driver に委譲（再利用）。polish は diff≒0 で自動 skip され非コード goal でも無害。
     # CLI からの state 書き込みは C-2 対象外（禁止はモデルの state.json 直編集のみ）。set-eval と同型。
-    # usage は記録しない（set-eval/monitor-set/verify-set も非記録）。evolve は skill-usage.csv を
+    # usage は記録しない（set-eval/monitor-set も非記録）。evolve は skill-usage.csv を
     # 「スキル名」として読む（grep -v ',steer:' で steer 行だけ除外）ため、裸の "go" 行は無効スキル名のノイズになる。
     fw_state_exists || { echo "flywheel go: state がありません（先に start）" >&2; exit 1; }
     _gp="$(fw_phase)"

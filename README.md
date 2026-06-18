@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.14 / MIT License
+v0.8.15 / MIT License
 
 ## インストール
 
@@ -158,6 +158,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.15
+- **verification を monitor council に統合 / self-graded ゲート撤去（FR-34・HITL→HOTL）** — 旧 `verification`（FR-32）は eval が薄い goal で done 前に挙動エビデンス確認を要求する self-graded ゲートだったが、`verify-set clean`（evidence 省略可・非記録）でモデルが skill を回さず**自己申告で素通り**できた。実測で `steer:verification` 9 回に対し `flywheel:verification` skill 起動は **0 回**（空通過）。**human on the loop** では「人間が見ていなくても信用できる検証」が要るため、self-graded ゲートを撤去し独立検証に一本化した: done を閉めるのは **eval（客観 exit code）+ monitor council（独立）の2つだけ**。挙動検証は monitor に統合 — `observer-behavior` レンズが「runnable なら runtime エビデンスがあるか」を判定し、必要なら **overseer（Bash 保持）が smoke を実行 → Read-only 観測者が判定**（動かすのは overseer・判定は独立／観測者に Bash は持たせない）。薄い eval の runnable goal は drift(impl) memo で「eval に runtime smoke を足せ」と促す。`loop-driver.sh` の FR-32 ブロック・`verify-set` CLI を削除（loop が単純化）。`fw_eval_is_thin` は `flywheel go` の thick-eval 判定で温存。verification skill は **gate から外し汎用の自己検証規律として存続**（monitor overseer がこの手順を参照）。`test/verification-merge.sh` で「薄 eval + monitor clean → verification steer なしで done / verification state 不生成 / steer 不記録」を mktemp 検証。
 
 ### 0.8.14
 - **adopt chain — done で backlog を自動消化（FR-33）** — これまで goal done 後は「`flywheel next` で次を」と人間に促すだけで、複数 phase を逐次回すには毎回手動 `/next` が必要だった。loop-driver の done 確定後に backlog があれば**自動で次の goal を起動**する（`loop-driver.sh`）。**経路別に挙動を分ける**: 次が **adopt 経路**（合意済み・`/add` 既定）なら止めず `exit 2` で設計→実装へ**連鎖続行**（backlog 全部一気）。次が **start 経路**（要件を一から掘る）なら pop はするが `exit 0` で**人間に hand-back**（design/PRD への遡上は自動化しない HITL 原則）。**無限ループ不可**: `next` が backlog 先頭を pop する＝backlog は単調減少（空で自然停止）。stuck な goal は各 goal の veto/monitor cap が人間へ返すので暴走せず、専用 chain cap は不要。`FLYWHEEL_NO_CHAIN=1` で従来挙動に戻せる。完了は引き続き eval ゲート一本（chain は done 後の起動だけを自動化し、各 goal の eval/monitor/done 判定は不変）。`test/adopt-chain.sh` で adopt 連鎖 / start 停止 / NO_CHAIN / backlog 空 の4ケースを mktemp 検証。

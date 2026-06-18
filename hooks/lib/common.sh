@@ -356,6 +356,6 @@ fw_work_active() { case "$1" in spec-ready|implementing|polish|eval) return 0 ;;
 
 # FR-32: eval が「薄い」（goal 固有の振る舞いを見ていない）か。eval_src=auto は
 # プロジェクト全体の test/lint を自動検出しただけで、この goal の振る舞いは見ていない → 薄い。
-# explicit（--eval）/ spec（design.md の完了条件）は人間が goal 固有に書いた eval なので
-# 薄くない（verification ゲートをスキップ）。eval_cmd 空（eval_src 空）は gate に到達しない。
+# explicit（--eval）/ spec（design.md の完了条件）は人間が goal 固有に書いた eval なので薄くない。
+# 用途: `flywheel go` の thick-eval 必須判定（FR-34 で verification ゲートは撤去・monitor に統合）。
 fw_eval_is_thin() { [[ "$(fw_get '.eval_src')" == "auto" ]]; }
