@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.20 / MIT License
+v0.8.21 / MIT License
 
 ## インストール
 
@@ -159,6 +159,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.21
+- **grill closing-checkpoint を AskUserQuestion 化（FR-41 / FR-39 phase 2）** — FR-39 の informed-stop（止める前に「未決の判断の枝」を提示してから人間に stop/continue を聞く）を3経路とも **prose** で書いていたが、prose はモデルが省略・埋没させられる＝buttonize の動機（構造的に必ず出す）と矛盾。closing-checkpoint を **AskUserQuestion** で出す指示に変えた: 残り判断の枝のうち効く**上位3**を選択肢に（各 option = 1つの未決判断）+ 4つ目「**握れた・進めて**」、**single-select**（枝を選ぶ→詰める→再 checkpoint /「握れた・進めて」で stop）、4個超は質問文に「他に N 個」。枝そのものをボタンにすることでモデルの列挙が強制され、informed-stop の核心（false-positive な握れた感を枝の可視化で殺す）が最も効く。binary（枝は質問文＝prose・選択肢は stop/continue だけ）は枝を prose に戻す自己矛盾なので不採用。`skills/grill/SKILL.md`・`skills/deep-interview/SKILL.md`・`hooks/plan-steer.sh`（hook は自分で AskUserQuestion を呼べないのでモデルへの指示文）の3経路。prose ガイドのみ・新機構ゼロ。`test/checkpoint-button.sh`（C1 sentinel / C2 stop オプション）。**この goal の grill 自体が「genuine な判断1つだけ聞き・obvious は決め打ち・closing-checkpoint をボタンで出す」を実演＝lever 1 + 本 phase の self-dogfood**。
 
 ### 0.8.20
 - **adopt/start/add の `!` 行 args sanitize（FR-40）** — `/flywheel:adopt`・`/flywheel:start`・`/flywheel:add` の `!` 動的注入行が `$ARGUMENTS` を **double-quote** でシェルに埋めており、args に ASCII シェルメタ文字（バッククォート / ASCII 引用符・括弧 / `$`）が入ると `if [ -n "..." ]` 行が **parse error**（行全体が実行前に弾かれ skill 起動失敗）。これは parse error なので `||`/フォールバックでは実行時に拾えない——テキストを「コードとして解釈されない」形にするしかない。`$ARGUMENTS` はプリプロセッサが**シェル実行前に literal 置換**するので、囲みを **single-quote（`'$ARGUMENTS'`）** にすれば置換後テキストをシェル解釈から保護できる（単一行・複雑化ゼロ）。`${CLAUDE_PLUGIN_ROOT}` は実シェル変数なので double-quote のまま。残る穴は args に literal `'` が入った時だけ（ゴール文では稀・heredoc 等の bulletproof 化は非スコープ）。`next.md` は `$ARGUMENTS` 不使用で対象外。`test/adopt-args-sanitize.sh`（C1 3コマンドが single-quote 形 / C2 hostile args で single-quote 形は parse OK・double-quote 形は parse 失敗）。**v0.8.19 FR-39 の dogfood 中に実踏したバグを、その場で backlog 計上 → 次 goal として adopt→修正した連鎖の産物**。

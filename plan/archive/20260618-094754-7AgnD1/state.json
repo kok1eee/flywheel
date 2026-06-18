@@ -1,0 +1,73 @@
+{
+  "phase": "done",
+  "goal": "FR-39 phase 2: grill の closing-checkpoint を AskUserQuestion ボタン化（informed stop を prose でなくボタンで出す）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/checkpoint-button.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "notes": "",
+  "baseline_rev": "d228aab0ecb4c7dd2f2e74c66911f5a10f700bcb",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T09:30:47Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-18T09:35:32Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T09:36:33Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T09:38:20Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T09:38:21Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-18T09:43:07Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T09:43:07Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor drift (impl) → 差し戻し"
+    },
+    {
+      "ts": "2026-06-18T09:43:31Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T09:47:54Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/checkpoint-button.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}

@@ -21,6 +21,6 @@ jq -cn '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalConte
 - 計画の決定点を列挙する。self-answer してよいのは *事実*（実装・既存パターン・コードに答えがある）だけ — Glob/Grep/Read で埋める
 - *判断*（スコープ/トレードオフ/優先順位/命名/どの案か）はコードに答えが無い → 必ず AskUserQuestion で1問ずつ・推奨案と理由を添えて聞く。迷ったら聞く側に倒す（self-answer で済ませない＝質問しない計画は失敗）
 - 計画には「## 非スコープ」と「## 完了条件（eval）」を必ず含める。完了条件は done を機械判定する fenced bash block（1行 = 1コマンド、&& 連結で実行される）
-- モデルは「詰め切った」を自己判定しない——**止めるのは人間**。ExitPlanMode の前に、まだ決めていない **未決の判断** の枝（スコープ/トレードオフ/命名/案の選択）を提示し、止めるか続けるかは人間が決める。形式不足の計画は plan-gate が差し戻す
+- モデルは「詰め切った」を自己判定しない——**止めるのは人間**。ExitPlanMode の前に、まだ決めていない **未決の判断** の枝（スコープ/トレードオフ/命名/案の選択）を提示し、止めるか続けるかは人間が決める。この提示は prose でなく AskUserQuestion で出す: 残り判断の枝を選択肢に（効く上位3 + 4つ目「握れた・進めて」・single-select）、枝を選べば詰めて再提示・「握れた・進めて」で ExitPlanMode へ。形式不足の計画は plan-gate が差し戻す
 承認されると flywheel が計画を plan/design.md に保存し、完了条件を eval として done まで自動 loop します。"}}'
 exit 0
