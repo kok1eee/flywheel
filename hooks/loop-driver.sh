@@ -176,6 +176,7 @@ EOF
         cat >&2 <<EOF
 🔁 flywheel: eval は緑ですが監視 council が drift を検知しました（done にできません）。修正して続けてください。
 理由: $mreason
+（この verdict は処理済み・クリア済みです。修正したら次の停止で自動的に再 monitor が走ります＝古い verdict を読み続けるわけではありません）
 EOF
         exit 2
         ;;
