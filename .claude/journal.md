@@ -3,6 +3,17 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-18 13:41 [ip-10-0-67-244]
+
+### Recap
+再起動債務の確認から始め、**2 機能を出荷 + HITL→HOTL の方向を確立**した（全 push + install 済み・**反映は要再起動**・現セッション hooks は依然 0.8.13）。①**docs**: `agents/capabilities.md` の planner/TaskCreate drift 修正（実在しない `planner` エージェント / `/task-decomposition` 参照を除去 → タスク分解は designer が `design.md` の `## Tasks` で書く実態に統一）+ **ROADMAP に epic 層（stateless 見出しグルーピング）を導入**（5 epic に再編。メモ `flywheel-eval-is-sole-done-gate`: 完了は eval ゲート一本・状態を持つ層を増やさない）。commit `5f86c45f`。②**v0.8.14 FR-33（adopt chain auto）**: loop-driver の done 後に backlog があれば自動で次 goal を起動。**adopt 経路は exit 2 で連鎖続行（全部一気）・start 経路は exit 0 で人間 hand-back（要件掘りは HITL）**。無限ループ不可（next が pop で単調減少）。`FLYWHEEL_NO_CHAIN=1` で無効化。`test/adopt-chain.sh` 4ケース緑。commit `bec52205`。③**HITL→HOTL の北極星を確立**（ユーザー合意・メモ `flywheel-hitl-to-hotl`）: **調べる=loop（自動）/ 決める=grill-me（人間）/ 判定=独立**。④**v0.8.15 FR-34（verification→monitor 統合）**: 調査で `steer:verification` 9回に対し `flywheel:verification` skill 起動 **0回**（skill-logger が全 skill 記録するのに CSV 皆無＝空通過は本物・根因は self-graded な `verify-set clean` 素通り）。self-graded ゲート（FR-32 ブロック + `verify-set` CLI）を撤去し、**done を閉めるのは eval(客観)+monitor(独立)の2つだけ**に。挙動検証は monitor に統合（`observer-behavior` に runtime レンズ + overseer が smoke 実行→Read-only 観測者が判定）。`fw_eval_is_thin` は `go` 用に温存。verification skill は gate から外し汎用規律として存続。`test/verification-merge.sh` 3ケース緑。commit `96fcd54d`。`main@origin` = **`96fcd54d`**（v0.8.15）。
+
+### Next
+- **再起動が最優先**: 0.8.15 を live に → FR-33/FR-34 を dogfood。adopt chain: `/flywheel:add` で複数 phase 積む→`/flywheel:next`→done で**自動連鎖**するか・start 経路で止まるか確認。verification: 薄 eval（`eval_src=auto`）の runnable goal で **monitor の overseer smoke**（Step 1.5）が実際に回り observer-behavior が runtime を見るか実機確認。
+- **HOTL epic phase2（次の設計）**: start 経路 auto-chain を hard-stop から「**調査自動 + grill-me で判断だけ聞いて続行**」へ（FR-33 follow-up）。ROADMAP の HOTL epic に登録済み。`loop-driver.sh` の done→次が start のとき exit 0 hand-back している箇所を、discovery を loop が回し決め所だけ pop する形に。
+- **残り**: ③ evolve 定期稼働（ほぼ未稼働）/ ⑤ マルチレポ follow-up テスト（`test/multirepo-diff.sh` の jj diff path / error 経路）/ ④ monitor 529（server-side・対処不可）。
+- **メモ更新候補**: `flywheel-goal-start-metrics` の「verification 空通過＝要調査」は FR-34 で解消 → 更新。新規 `flywheel-hitl-to-hotl` / `flywheel-eval-is-sole-done-gate` を参照。
+
 ## 2026-06-18 11:51 [ip-10-0-67-244]
 
 ### Recap
