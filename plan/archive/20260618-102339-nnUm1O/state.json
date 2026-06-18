@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "grill/SKILL.md:41 の原則 bullet を Step3 ボタン化(AskUserQuestion)と整合",
+  "design_path": "plan/design.md",
+  "eval_cmd": "grep -q \"Step 3 参照\" skills/grill/SKILL.md",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "L41 原則 bullet を Step3 ボタン化と整合(例: 提示は AskUserQuestion で — Step 3 参照 を追記)。Boundary: skills/grill/SKILL.md のみ。trivial。",
+  "baseline_rev": "e58d652aca1ab88e100e97f467471fdba6e7c7ea",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T10:09:39Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-18T10:17:01Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T10:18:08Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T10:20:38Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T10:20:38Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-18T10:23:39Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T10:23:39Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (grep -q \"Step 3 参照\" skills/grill/SKILL.md) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}

@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.21 / MIT License
+v0.8.23 / MIT License
 
 ## インストール
 
@@ -159,6 +159,12 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.23
+- **grill/SKILL.md:41 を Step3 ボタン化と整合（FR-43）** — FR-41 で Step 3 の closing-checkpoint を AskUserQuestion 化したが、同一 skill の L41 原則 bullet が prose 描写のまま割れていた（FR-41 monitor が conf72・非ブロックで指摘）。L41 に「提示の出し方は AskUserQuestion で Step 3 参照」を一言追記して整合（意味＝止めるのは人間・informed stop は不変、how の所在を指すだけ）。`grep -q "Step 3 参照" skills/grill/SKILL.md`。**adopt chain で backlog #2 として自動起動した dogfood**。
+
+### 0.8.22
+- **grep-test の共有 lib 化（FR-42）** — `test/grill-termination.sh`・`adopt-args-sanitize.sh`・`checkpoint-button.sh` の3 grep-test が `fail()`/`ok()` と `DIR`/`ROOT` 解決（約6行）を重複（rule-of-three・simplify 指摘）。`chain-lib.sh` は source 時に mktemp/git init/cd の副作用を持つ chain 系 state テスト専用足場なので grep-only test には不適。**副作用なしの軽量 `test/grep-lib.sh`**（`fail`/`ok`/`$ROOT` のみ）に抽出し、3テストが `source` する。chain-lib.sh 系の state テスト（adopt-chain / start-chain / 等）は不変。`bash test/{grill-termination,adopt-args-sanitize,checkpoint-button}.sh` 全緑で確認。**adopt chain（FR-33）で backlog #1 として自動起動した dogfood**。
 
 ### 0.8.21
 - **grill closing-checkpoint を AskUserQuestion 化（FR-41 / FR-39 phase 2）** — FR-39 の informed-stop（止める前に「未決の判断の枝」を提示してから人間に stop/continue を聞く）を3経路とも **prose** で書いていたが、prose はモデルが省略・埋没させられる＝buttonize の動機（構造的に必ず出す）と矛盾。closing-checkpoint を **AskUserQuestion** で出す指示に変えた: 残り判断の枝のうち効く**上位3**を選択肢に（各 option = 1つの未決判断）+ 4つ目「**握れた・進めて**」、**single-select**（枝を選ぶ→詰める→再 checkpoint /「握れた・進めて」で stop）、4個超は質問文に「他に N 個」。枝そのものをボタンにすることでモデルの列挙が強制され、informed-stop の核心（false-positive な握れた感を枝の可視化で殺す）が最も効く。binary（枝は質問文＝prose・選択肢は stop/continue だけ）は枝を prose に戻す自己矛盾なので不採用。`skills/grill/SKILL.md`・`skills/deep-interview/SKILL.md`・`hooks/plan-steer.sh`（hook は自分で AskUserQuestion を呼べないのでモデルへの指示文）の3経路。prose ガイドのみ・新機構ゼロ。`test/checkpoint-button.sh`（C1 sentinel / C2 stop オプション）。**この goal の grill 自体が「genuine な判断1つだけ聞き・obvious は決め打ち・closing-checkpoint をボタンで出す」を実演＝lever 1 + 本 phase の self-dogfood**。

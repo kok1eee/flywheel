@@ -7,14 +7,10 @@
 # C3) checkpoint 行（sentinel と同一行）に「AskUserQuestion」併記（prose→button の核心・design 完了条件の3つ目）
 set -uo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$DIR/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/grep-lib.sh"   # fail/ok/$ROOT（副作用なし）
 GR="$ROOT/skills/grill/SKILL.md"
 DI="$ROOT/skills/deep-interview/SKILL.md"
 PS="$ROOT/hooks/plan-steer.sh"
-
-fail() { echo "❌ $1"; exit 1; }
-ok()   { echo "✅ $1"; }
 
 for f in "$GR" "$DI" "$PS"; do [ -f "$f" ] || fail "対象が無い: $f"; done
 

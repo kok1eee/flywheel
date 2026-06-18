@@ -8,14 +8,10 @@
 #   C4) grill の `事実=self-answer` filter が温存（lever 1 が「無限に聞く」に退行していない回帰ガード）
 set -euo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$DIR/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/grep-lib.sh"   # fail/ok/$ROOT（副作用なし）
 DI="$ROOT/skills/deep-interview/SKILL.md"
 GR="$ROOT/skills/grill/SKILL.md"
 PS="$ROOT/hooks/plan-steer.sh"
-
-fail() { echo "❌ $1"; exit 1; }
-ok()   { echo "✅ $1"; }
 
 for f in "$DI" "$GR" "$PS"; do
   [ -f "$f" ] || fail "対象ファイルが無い: $f"

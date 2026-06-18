@@ -7,11 +7,7 @@
 #       single-quote 内でもシェル展開は起きず、メタ文字はリテラル保護される）
 set -uo pipefail
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$DIR/.." && pwd)"
-
-fail() { echo "❌ $1"; exit 1; }
-ok()   { echo "✅ $1"; }
+source "$(dirname "${BASH_SOURCE[0]}")/grep-lib.sh"   # fail/ok/$ROOT（副作用なし）
 
 # ---- C1: 3コマンドの `!` 行が single-quote 形 ----
 for c in adopt start add; do
