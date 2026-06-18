@@ -3,6 +3,38 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-18 16:28 [ip-10-0-67-244]
+
+### Recap
+**v0.8.18 / FR-38（polish+monitor steer の融合）を出荷**。16:00 の v0.8.17 出荷後、ユーザー観察
+「monitor を一緒に動かせば早い」を実装。
+**設計**: done 前ゲートの polish(simplify)+monitor を **1 本の steer で同一ターンに**実行させ往復を
+3→2 に削減。ユーザーの「peer-to-peer?」の問いに対し**逐次パイプライン（simplify→monitor は順序固定・
+monitor は simplify 後の最終コードを検証）であって並列ではない**と整理（peer 並列が実在するのは
+monitor council 内の observer fan-out）。`enter_polish` に `$2="monitor"` モードを足して統合（新関数を
+増やさず）。monitor を pending に prime（model が飛ばしても次停止の pending 分岐が拾い degrade）。
+デフォルト ON・`FLYWHEEL_NO_FUSE=1` でエスケープ。eval_cmd 未設定経路（1 引数呼び出し）は `${2:-}` で
+従来 simplify-only 枝に入り不変。monitor ゲート本体も不変。
+**安全性**: eval は毎停止で独立に回るので simplify が壊しても次停止の eval-fail が拾い done すり抜けなし。
+**自己 dogfood 完走**（FR-38 の実装が hook 即 live ＝この goal 自身が新しい融合 steer で発火）:
+①テストが **`set -u` バグ**（1 引数呼び出しで bare `$2` unbound→exit 1）を捕捉→`${2:-}` で修正。
+②監視 council が **test カバレッジ drift**（C3 が融合 entry を通らない・degrade 未テスト）を検出→
+C3 を融合 entry 経由に作り直し + C4（degrade 安全=monitor 飛ばし→pending→done すり抜けなし）追加→clean。
+`test/polish-monitor-fuse.sh`(4 ケース)。全 8 テストスイート緑。docs 同期（README v0.8.18・NO_FUSE 追加・
+changelog / ROADMAP 融合行 ✅）。`main@origin` 予定 = **v0.8.18**。
+**CLI に done コマンドが無い件をユーザーと確認**: done は唯一「自己申告させない」遷移＝eval(客観)+monitor
+(独立)で勝ち取る。手動 `done` は自己採点の裏口になるので意図的に無い（loop-driver hook だけが `_advance`）。
+完了 goal はターンを終えれば Stop hook が自動 done。reset は「未完を中止」で done ではない。
+
+### Next
+- **残り backlog（ROADMAP）**: FR-37 follow-up（①ファイル間コード移動 add≈del の skip ②reset 再 baseline で
+  min-diff 無効化）/ evolve 定期稼働 / マルチレポ follow-up テスト（multirepo-diff.sh の jj path・error 経路）
+  / ★ `flywheel note`（文脈スナップショット）/ monitor 529（server-side・対処不可）。
+- **loop 制御 epic**: drift steer 文言(FR-13相当)・polish 比例制御(FR-37)・polish+monitor 融合(FR-38) 完了。
+  残るは FR-37 follow-up（move/rename の add≈del 検出）くらい。
+- **観察**: 融合(FR-38)で done 前の往復が 1 回減った。次に同種の往復削減余地があれば（eval-fail loop の
+  steer 集約など）候補。実運用で体感速度を観測。
+
 ## 2026-06-18 16:00 [ip-10-0-67-244]
 
 ### Recap

@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "polish+monitor steer の融合: loop-driver の main eval-green 経路で polish が要るとき、simplify と monitor を1本の steer に束ね同一ターンで実行させ往復を 3→2 に削減（FR-38・ROADMAP loop制御 epic）。monitor を pending に prime し model が飛ばしても次停止の pending 分岐が拾う＝安全に degrade、monitor ゲート本体(112-137)は不変、eval は毎停止で独立に回るので done すり抜けなし。デフォルト ON・FLYWHEEL_NO_FUSE=1 で従来の分離2ステップに戻すエスケープハッチ。eval_cmd 未設定経路(line 90)の polish は monitor 無関係なので触らない。Boundary: hooks/loop-driver.sh の enter_polish 周辺 + test/。eval は test/polish-monitor-fuse.sh（融合steer・pending prime・NO_FUSE で従来挙動の3ケース）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/polish-monitor-fuse.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "notes": "",
+  "baseline_rev": "1172b6d18696bceae3b55af90069bd48a82c7632",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T07:06:32Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-18T07:07:48Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T07:08:14Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T07:10:08Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T07:10:10Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish+monitor (fused)"
+    },
+    {
+      "ts": "2026-06-18T07:24:12Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T07:24:14Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/polish-monitor-fuse.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}

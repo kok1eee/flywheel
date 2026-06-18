@@ -53,11 +53,27 @@ monitor_bump() {
 }
 
 # polish 段に入る（FR-11・polished フラグで goal につき1回だけ）。
-enter_polish() {  # $1 = steer メッセージの冒頭文脈
+# $2="monitor" のとき融合(FR-38): simplify と monitor を同一ターンで実行させ往復を 3→2 に削る。
+# simplify→monitor は逐次（monitor は simplify 後の最終コードを検証するので順序固定）で、削るのは
+# 段間の停止ハンドシェイクだけ。monitor を pending に prime しておくので、model が monitor を飛ばしても
+# 次停止の monitor ゲート(pending 分岐)が拾って再 steer ＝ 安全に従来挙動へ degrade。eval は毎停止で
+# 独立に回るので simplify が壊しても次停止の eval-fail が拾い done をすり抜けない。
+enter_polish() {  # $1 = steer 冒頭文脈, $2 = "monitor" で融合
   fw_set_json polished true
-  fw_advance polish "loop-driver: enter polish (simplify)"
+  fw_advance polish "loop-driver: enter polish${2:+ +monitor}"
   fw_log_usage "steer:simplify"   # FR-18: steer 従命率の分母
-  echo "$1 Skill: simplify でコードを整理してください（polish: reuse/簡素化/効率/altitude）。次の停止で再度品質チェックし、通れば done です。" >&2
+  if [[ "${2:-}" == "monitor" ]]; then
+    fw_set_json monitor '{"status":"pending"}'
+    fw_log_usage "steer:monitor"
+    cat >&2 <<EOF
+$1 done の前に2つを【同じターンで・この順に】:
+1) Skill: simplify でコードを整理（polish: reuse/簡素化/効率/altitude）。
+2) 続けて Skill: flywheel:monitor で drift を検証（観測者 fan-out: 要件逸脱/挙動/進捗）。simplify の結果を検証するので必ず simplify の後。
+次の停止で eval 緑 + monitor verdict を一括判定 → clean なら done。
+EOF
+  else
+    echo "$1 Skill: simplify でコードを整理してください（polish: reuse/簡素化/効率/altitude）。次の停止で再度品質チェックし、通れば done です。" >&2
+  fi
   exit 2
 }
 
@@ -107,7 +123,14 @@ if [[ "$rc" -eq 0 ]]; then
   fw_set_json veto_count 0
   fw_set_json last_fail_count 0   # FR-25: green を baseline に（以後の悪化 = 0→N で即 revert steer）
   # 初回合格 → done の前に polish を1回（green を確認してから磨く = polish-on-green）
-  should_polish && enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
+  # 既定では polish と monitor を1ターンに融合（FR-38）。FLYWHEEL_NO_FUSE=1 で従来の分離2ステップ。
+  if should_polish; then
+    if [[ "${FLYWHEEL_NO_FUSE:-}" == "1" ]]; then
+      enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
+    else
+      enter_polish "✅ flywheel: eval 合格（$eval_cmd）。" monitor
+    fi
+  fi
 
   # --- monitor ゲート（FR-30）: done の前に監視 council で drift を検証する ---
   # polish 後の緑形を、実装文脈を持たない観測者で多観点検証してから done にする。
