@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "loop-driver の start 経路 auto-chain を hard-stop から「done→次が start goal のとき exit2+steer で(1)まず go/no-go を grill→OKなら(2)discovery を自動で回し判断だけ grill して(3)design ゲート→実装→done→連鎖」へ変える（FR-35・HOTL phase2・FR-33 follow-up）。FLYWHEEL_NO_CHAIN=1 で従来 hard-stop に戻せる後方互換は維持。Boundary: hooks/loop-driver.sh の start 分岐 + test/。判断(スコープ/トレードオフ/優先/命名/案選択)は self-answer せず grill する旨を steer に明記。eval は test/start-chain.sh（exit2 化・新 steer・NO_CHAIN=1 で hand-back 維持の3ケース）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/adopt-chain.sh && bash test/start-chain.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "notes": "",
+  "baseline_rev": "c5c0531f9e1b12b980cce6ccfedc87211164c969",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-18T04:49:32Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-18T04:51:13Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-18T04:51:32Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-18T05:00:27Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T05:00:31Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish (simplify)"
+    },
+    {
+      "ts": "2026-06-18T05:02:57Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-18T05:02:58Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/adopt-chain.sh && bash test/start-chain.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}

@@ -3,6 +3,22 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-18 15:02 [ip-10-0-67-244]
+
+### Recap
+再起動後セッション（13:41 handoff の Next を実行）。**v0.8.16 / FR-35（HOTL phase2: start 経路 auto-chain）を出荷**。
+まず live 確認: flywheel プラグインは `directory` ソース（repo 直読み）なので**本セッションは v0.8.15 hooks が live**＝再起動債務は解消済みと判明。Next の最優先（FR-33/34 dogfood）と「HOTL phase2 設計」のうち、ユーザー選択で **phase2 を設計・実装**。
+**設計判断（grill 2問）**: ①start 経路 auto-chain は**デフォルト ON だが連鎖前に go/no-go を grill**（vague な start goal の drift を人間が一段目で止める）②discovery が requirements を draft する過程で**判断だけ grill**したら自動続行（requirements 後に必ず1回止める案は不採用＝human-in 寄り）。
+**実装**: flywheel harness で dogfood（`/flywheel:start`→requirements/design→validate 通過→implementing→eval→polish(simplify)→**monitor council=clean**→done）。`hooks/loop-driver.sh` の start 分岐を `exit 0`(hard-stop) → **`exit 2` + 新 steer**（go/no-go gate・discovery 指示・「判断は self-answer せず grill」明記）+ `fw_log_usage "steer:start-chain"`。`FLYWHEEL_NO_CHAIN=1` の後方互換維持。`test/start-chain.sh`(3ケース) 新規 + `test/adopt-chain.sh` ケース2 を新挙動(start→exit2)に更新。**polish で test ハーネス重複を `test/chain-lib.sh` に抽出**（adopt/start 両 chain test が source）。monitor の memo 2件（version slip / no-go テスト未カバー）を**その場で対応**（plugin.json+marketplace.json×2 を 0.8.16 に / C2 に no-go marker + discovery grep 厳格化）。eval 7ケース全緑。
+**機構の学び**: loop-driver は **Stop hook（非対話）**で AskUserQuestion を呼べない → 「人間に pop」は `exit 2` + steer（次ターンのモデルに grill を打たせる）で実現＝adopt chain と同型。phase2 は hook のみ変更なので**再起動不要で即 live**（skill/command は未変更）。
+出荷物: 7ファイル +109 -48（hooks/loop-driver.sh, test/{chain-lib,start-chain,adopt-chain}.sh, ROADMAP.md, .claude-plugin/{plugin,marketplace}.json）+ plan/archive。`main@origin` 予定 = v0.8.16。
+
+### Next
+- **FR-33 chain の live dogfood**（今回未踏）: 複数 phase を `/flywheel:add` で積み→`/flywheel:next`→done で **adopt 連鎖**が実際に回るか、**start 連鎖**で go/no-go grill→discovery 自動が steer どおり動くか実機確認（FR-35 の挙動を本番で踏む）。
+- **メモ更新**: `flywheel-goal-start-metrics` の「verification 空通過＝要調査」は FR-34 で解消済 → 更新（このセッションで対応予定）。HOTL epic は phase2 まで実装完了。
+- **残り backlog（ROADMAP）**: evolve 定期稼働（ほぼ未稼働）/ マルチレポ follow-up テスト（`test/multirepo-diff.sh` の jj path・error 経路）/ ★ polish 比例制御（move/rename は simplify skip）/ ★ `flywheel note`（文脈スナップショット）/ ★ 初回 eval veto の原因示唆 / monitor 529（server-side・対処不可）。
+- **HOTL epic**: phase1(verification 独立化=FR-34)・phase2(start 経路=FR-35) 完了。次の自律度引き上げ候補があれば ROADMAP に新 phase として積む。
+
 ## 2026-06-18 13:41 [ip-10-0-67-244]
 
 ### Recap

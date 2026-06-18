@@ -197,9 +197,10 @@ EOF
   # --- adopt chain (FR-33): done で backlog があれば次の goal を自動起動し連続消化する ---
   # 安全性: next が backlog 先頭を pop する＝backlog は単調減少（空で自然停止・無限ループ不可）。
   #   stuck な goal は各 goal の veto/monitor cap が人間へ hand-back するので暴走しない（専用 cap 不要）。
-  # 経路別: adopt（合意済み）は止めず設計→実装へ連鎖。start（要件を一から掘る）は HITL のため
-  #   ここで止めて人間に返す（design/PRD への遡上は自動化しない原則）。
-  # FLYWHEEL_NO_CHAIN=1 で従来の「人間に促すだけ」へ戻す。
+  # 経路別: adopt（合意済み）は止めず設計→実装へ連鎖。start（要件を一から掘る）も FR-35 以降は
+  #   HOTL で連鎖するが、連鎖前に go/no-go を grill し discovery 中の判断だけ人間に pop する
+  #   （調べる=自動 / 決める=人間 / 判定=monitor）。
+  # FLYWHEEL_NO_CHAIN=1 で従来の hard-stop（pop せず人間に促すだけ）へ戻す。
   n="$(fw_backlog_count)"
   if [[ "$n" -gt 0 && "${FLYWHEEL_NO_CHAIN:-}" != "1" ]]; then
     if "$FW_CLI" next >/dev/null 2>&1; then
@@ -213,12 +214,21 @@ goal: $new_goal
 EOF
         exit 2   # 連続自律: 止めずに次の設計へ進ませる
       fi
+      # start 経路（要件を一から掘る）: HOTL で連鎖する（FR-35）。loop-driver は Stop hook で
+      # AskUserQuestion を呼べないので、exit 2 + steer で次ターンのモデルに go/no-go grill →
+      # discovery → 判断だけ grill を実行させる（調べる=自動 / 決める=人間 / 判定=monitor）。
+      fw_log_usage "steer:start-chain"
       cat >&2 <<EOF
-🛑 flywheel: done → 次は start 経路（要件を一から掘る）goal です。自動連鎖を止め人間に返します（backlog 残 $(fw_backlog_count) 件）。
+🔗 flywheel: done → 次は start 経路 goal（要件を一から掘る）。HOTL で連鎖します（backlog 残 $(fw_backlog_count) 件）。
 goal: $new_goal
-→ plan/requirements.md と plan/design.md を書いてください（曖昧なら /flywheel:deep-interview → /flywheel:discovery-council）。
+→ まず人間に go/no-go を1問 grill-me:「この goal を今掘りますか?」。
+  ・no-go → discovery せず停止。goal は loaded(designing) のまま。再開するか /flywheel:reset で破棄するか人間が決める。
+  ・go    → discovery を回す（曖昧なら /flywheel:deep-interview → /flywheel:discovery-council）。
+            plan/requirements.md と plan/design.md を draft し、design ゲート→実装→eval→done→連鎖。
+⚠️ 掘る過程で出た【判断】（スコープ/トレードオフ/優先度/命名/案の選択）は self-answer せず必ず grill-me。
+   self-answer してよいのは【事実】（コードを読めば分かること）だけ。迷ったら聞く側。
 EOF
-      exit 0   # 人間へ hand-back（HITL）
+      exit 2   # HOTL: 止めず次の設計（go/no-go grill から）へ進ませる
     fi
     echo "⚠️ flywheel: 次 goal の自動起動に失敗しました。'$FW_CLI next' で手動起動してください（backlog 残 $n 件）。" >&2
     exit 0
