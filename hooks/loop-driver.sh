@@ -216,9 +216,37 @@ EOF
   arch="$(fw_archive_plan)"   # FR-12: 完了スペックを退避（plan/ をクリーンに）
   echo "✅ flywheel: eval 合格（$eval_cmd）。goal 達成として done。" >&2
   [[ -n "$arch" ]] && echo "   設計を退避: ${arch#"$FW_ROOT"/}" >&2
+  # --- adopt chain (FR-33): done で backlog があれば次の goal を自動起動し連続消化する ---
+  # 安全性: next が backlog 先頭を pop する＝backlog は単調減少（空で自然停止・無限ループ不可）。
+  #   stuck な goal は各 goal の veto/monitor cap が人間へ hand-back するので暴走しない（専用 cap 不要）。
+  # 経路別: adopt（合意済み）は止めず設計→実装へ連鎖。start（要件を一から掘る）は HITL のため
+  #   ここで止めて人間に返す（design/PRD への遡上は自動化しない原則）。
+  # FLYWHEEL_NO_CHAIN=1 で従来の「人間に促すだけ」へ戻す。
   n="$(fw_backlog_count)"
-  [[ "$n" -gt 0 ]] && echo "📋 backlog に $n 件。'$FW_CLI next' で次を開始してください。" >&2
-  exit 0   # stop 許可
+  if [[ "$n" -gt 0 && "${FLYWHEEL_NO_CHAIN:-}" != "1" ]]; then
+    if "$FW_CLI" next >/dev/null 2>&1; then
+      new_goal="$(fw_get '.goal')"
+      if [[ "$(fw_get '.entry')" == "adopt" ]]; then
+        fw_log_usage "steer:chain"
+        cat >&2 <<EOF
+🔗 flywheel: done → adopt chain で次の goal を自動起動しました（backlog 残 $(fw_backlog_count) 件）。
+goal: $new_goal
+→ 会話 / .claude/journal.md 先頭 Next / notes の合意を plan/design.md に結晶化してください（「## 完了条件（eval）」も）。合格で実装ゲートが開き、eval→done→次へ連鎖します。
+EOF
+        exit 2   # 連続自律: 止めずに次の設計へ進ませる
+      fi
+      cat >&2 <<EOF
+🛑 flywheel: done → 次は start 経路（要件を一から掘る）goal です。自動連鎖を止め人間に返します（backlog 残 $(fw_backlog_count) 件）。
+goal: $new_goal
+→ plan/requirements.md と plan/design.md を書いてください（曖昧なら /flywheel:deep-interview → /flywheel:discovery-council）。
+EOF
+      exit 0   # 人間へ hand-back（HITL）
+    fi
+    echo "⚠️ flywheel: 次 goal の自動起動に失敗しました。'$FW_CLI next' で手動起動してください（backlog 残 $n 件）。" >&2
+    exit 0
+  fi
+  [[ "$n" -gt 0 ]] && echo "📋 flywheel: done。backlog に $n 件（FLYWHEEL_NO_CHAIN=1 のため自動連鎖せず）。'$FW_CLI next' で次へ。" >&2
+  exit 0   # stop 許可（backlog 空 or 連鎖無効）
 fi
 
 # ここから eval 失敗（rc != 0）。緑が崩れたら監視 verdict と試行回数は破棄（次の緑で再検証・FR-30）。
