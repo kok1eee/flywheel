@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.23 / MIT License
+v0.8.24 / MIT License
 
 ## インストール
 
@@ -159,6 +159,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.24
+- **test を push+PR で走らせる GitHub Actions CI（FR-44）** — flywheel は `test/*.sh`（11 本の自立テスト）を持つが CI が無く、リグレッションを push 後に人手で気付くしかなかった。`test/run-all.sh`（`test/*.sh` を `chain-lib.sh`/`grep-lib.sh` 除外でループ・1 本でも失敗で非ゼロ集約）を**ローカルと CI の共有 runner** にし、`.github/workflows/ci.yml`（`on: push, pull_request` / `ubuntu-latest` / `actions/checkout@v4` → `bash test/run-all.sh`）で常時客観検証する。実依存は git/bash/jq のみで ubuntu-latest プリインストール＝追加 install も matrix も不要（tests に bash version 依存なし）。Done は手元 runner 緑のみ、GitHub 実 CI の初回 green は push 後 `/ci-watch`（done 条件外）。**dogfood: eval ゲート思想（self-grade せず客観 exit code で検証）を自分自身のテストに適用**——adopt で結晶化 → 設計ゲート → eval → 監視 council → done を自分で踏んだ。監視 council（observer-behavior）が「`run-all.sh` の**失敗集約パス**が全緑 eval では一度も実走されず未検証」を検出 → `test/run-all-aggregation.sh`（runner に対象ディレクトリ引数を足し、捨てテストで `fail→exit 非0+失敗名` / `allpass→exit 0` を runtime 検証）で閉じた＝監視役が CI runner の核契約の死角を実際に塞いだ実例。
 
 ### 0.8.23
 - **grill/SKILL.md:41 を Step3 ボタン化と整合（FR-43）** — FR-41 で Step 3 の closing-checkpoint を AskUserQuestion 化したが、同一 skill の L41 原則 bullet が prose 描写のまま割れていた（FR-41 monitor が conf72・非ブロックで指摘）。L41 に「提示の出し方は AskUserQuestion で Step 3 参照」を一言追記して整合（意味＝止めるのは人間・informed stop は不変、how の所在を指すだけ）。`grep -q "Step 3 参照" skills/grill/SKILL.md`。**adopt chain で backlog #2 として自動起動した dogfood**。

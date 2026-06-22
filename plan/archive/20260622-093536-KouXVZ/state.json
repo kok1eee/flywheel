@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "flywheel の test を push+PR で走らせる GitHub Actions CI を追加（FR-44）。設計は grill で合意済み。design.md に結晶化する内容: (1) test/run-all.sh を新設 — test/ 配下の *.sh を chain-lib.sh / grep-lib.sh（source 用 lib）除外でループ実行し、1本でも失敗したら非ゼロで集約する共有 runner。ローカルと CI が同じ入口を通る。(2) .github/workflows/ci.yml — trigger=push と pull_request の両方、runs-on=ubuntu-latest、matrix なし（tests に bash version 依存なし）、依存 git/bash/jq は ubuntu-latest にプリインストール済みで追加 install 不要、step は actions/checkout → bash test/run-all.sh。(3) version bump=v0.8.24 を .claude-plugin/plugin.json と .claude-plugin/marketplace.json の2箇所、README 冒頭 vX.Y.Z + Changelog、ROADMAP 状態行に反映。eval=bash test/run-all.sh（厚い/explicit）。Done は手元 runner 緑のみ。GitHub 実 CI の初回 green は done 条件外（push 後 /ci-watch で確認）。dogfood: eval ゲート思想（self-grade せず客観 exit code）を自テストに適用。 --eval bash test/run-all.sh",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "",
+  "baseline_rev": "64ecf8d83dd900a1c849ff24eb543500d774a093",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-22T09:18:29Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-22T09:19:59Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-22T09:20:22Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-22T09:23:46Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-22T09:23:54Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-22T09:25:51Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-22T09:35:36Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}
