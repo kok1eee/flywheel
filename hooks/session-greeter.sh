@@ -51,4 +51,5 @@ else
 fi
 emit "🛞 flywheel は dormant（設計ゲートは開いており通常作業の邪魔はしません）。
   しっかり作るなら: Shift+Tab で plan mode / 明示起動: /flywheel:start <作りたいこと> / $FW_CLI start \"<作りたいこと>\"
-  ${plan_line}"
+  ${plan_line}
+  迷ったら /flywheel:guide（使い方・ルート選択・詰まりの地図）"

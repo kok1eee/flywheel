@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.26 / MIT License
+v0.8.27 / MIT License
 
 ## インストール
 
@@ -158,6 +158,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.27
+- **greeter に `/flywheel:guide` 導線（FR-47）** — `session-greeter` は entry point（plan mode / `/flywheel:start`）は出すが「使い方を学ぶ入口」を出していなかった。dormant 案内に「迷ったら `/flywheel:guide`（使い方・ルート選択・詰まりの地図）」を1行追加。greeter は SessionStart hook で **Claude の context に injection** されるので、Claude が flywheel の駆動に迷ったとき guide へ辿れる。**A（greeter のみ）に倒す判断**: B（global CLAUDE.md への常設 pointer）は全リポ発火・config と plugin の結合・auto-engage（FR-45 で削除した intent-router）への逆戻りリスクがあり、A で不足が実証されてから（投機しない）。`test/greeter-guide.sh`（導線消失の grep ガード）。
 
 ### 0.8.26
 - **chain の goal 間 auto-checkpoint（FR-46）** — adopt chain（FR-33）が done→次 goal で commit せず、連続 done が1つの未コミット change に bundle され履歴粒度が潰れる問題を解消。done→chain 境界（`loop-driver` の `next` 直前）で `fw_chain_checkpoint` を呼び、完了 goal を **jj describe+new** で独立 change に確定してから次を起動する。**jj のみ**（このリポ/運用は jj 専用・git auto-commit は committal で YAGNI）、git リポは1行 note を出して skip（degrade）。message は goal から自動生成（`chore: chain checkpoint — <goal 1行目>`）。既定 ON・`FLYWHEEL_NO_CHECKPOINT=1` で無効化（`NO_CHAIN`/`NO_FUSE` と同じ escape-hatch）。C-2 整合: checkpoint は hook が VCS 操作＝モデルは `.flywheel/` state を触らない（不変）。jj describe/new は op log で可逆。`test/chain-checkpoint.sh`(C1 jj 分離 / C2 git degrade / C3 NO_CHECKPOINT)。**実装中、直前の intent-router commit に bundle されかけ手動 `jj new` で分離＝本機能が自動化する手作業をその場で dogfood**。
