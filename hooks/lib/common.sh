@@ -137,6 +137,33 @@ fw_goal_diff_lines() {
   printf '%s\n' "$total"
 }
 
+# done→chain 境界の checkpoint commit message を goal から生成（FR-46・repo 非依存）。
+fw_checkpoint_msg() {
+  # 1行目を文字単位で72字に切る。`cut -c` はロケール次第で UTF-8 をバイト切断し日本語を壊すため、
+  # bash 部分文字列（UTF-8 ロケールで文字単位）を使う＝リポの `${var:0:N}` UTF-8 規約に揃える。
+  local first
+  first="$(printf '%s' "$1" | head -1)"
+  printf 'chore: chain checkpoint — %s\n' "${first:0:72}"
+}
+
+# chain 連鎖（done→next）の境界で、完了 goal を独立 change に確定して履歴粒度を保つ（FR-46）。
+# jj のみ: describe(@＝完了 goal をラベル) + new(N+1 用の空 change)。git は degrade（surprise commit しない）。
+# best-effort: 失敗しても loop を止めない（return 0）。hook が VCS 操作する＝C-2（モデル≠state）不変。
+# 呼び出しは loop-driver の done→chain 境界のみ（file 編集が止まる安全なタイミング）。
+fw_chain_checkpoint() {
+  [[ "${FLYWHEEL_NO_CHECKPOINT:-}" == "1" ]] && return 0
+  if ! ( cd "$FW_ROOT" && jj root >/dev/null 2>&1 ); then
+    echo "ℹ️ flywheel: chain checkpoint は jj リポのみ（git は skip）。" >&2
+    return 0
+  fi
+  local msg; msg="$(fw_checkpoint_msg "$(fw_get '.goal')")"
+  ( cd "$FW_ROOT" && jj describe -m "$msg" >/dev/null 2>&1 ) \
+    || { echo "⚠️ flywheel: chain checkpoint の describe 失敗（skip）。" >&2; return 0; }
+  ( cd "$FW_ROOT" && jj new >/dev/null 2>&1 ) \
+    || { echo "⚠️ flywheel: chain checkpoint の jj new 失敗（skip）。" >&2; return 0; }
+  echo "🔖 flywheel: chain checkpoint — 完了 goal を確定し新 change を切りました（$msg）。" >&2
+}
+
 # state を初期化（flywheel start / adopt）。goal を記録し designing から開始。
 # polish: "true"/"false"（FR-11、実装後 eval 前に simplify を steer するか）
 # eval_src: eval_cmd の出所 "explicit"（--eval 明示）/ "auto"（自動検出）/ ""（なし）。

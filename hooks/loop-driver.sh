@@ -226,6 +226,7 @@ EOF
   # FLYWHEEL_NO_CHAIN=1 で従来の hard-stop（pop せず人間に促すだけ）へ戻す。
   n="$(fw_backlog_count)"
   if [[ "$n" -gt 0 && "${FLYWHEEL_NO_CHAIN:-}" != "1" ]]; then
+    fw_chain_checkpoint   # FR-46: 完了 goal を独立 change に確定してから N+1 起動（jj のみ・履歴粒度保持）
     if "$FW_CLI" next >/dev/null 2>&1; then
       new_goal="$(fw_get '.goal')"
       if [[ "$(fw_get '.entry')" == "adopt" ]]; then

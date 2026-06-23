@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "chain の goal 間 auto-checkpoint: adopt chain が done→次で commit せず履歴粒度が潰れる問題を境界 commit/change-split で解消",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "start",
+  "notes": "問題: adopt chain(FR-33) が goal 間で commit しない→連続 done が1つの未コミット change に混在(今回 FR-42+43 が混ざり手で整理した)。大物が小物と bundle されると履歴が潰れる。要設計: commit のタイミング(done 時か次 goal 起動時か)/version 跨ぎの message 生成/jj と git 両対応/C-2(モデルは state を進めない)との整合/loop-driver の done→chain 境界で checkpoint する案。entry=start(要件から掘る)。",
+  "baseline_rev": "3e76f5232b740d44d7e08514e224fca8f34930d1",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-23T03:27:52Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel start"
+    },
+    {
+      "ts": "2026-06-23T03:38:20Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-23T03:39:24Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-23T03:43:34Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-23T03:43:42Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-23T03:53:55Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-23T03:54:00Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean"
+    }
+  ],
+  "last_fail_count": 0
+}
