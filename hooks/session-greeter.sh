@@ -3,8 +3,7 @@
 # セッション開始時（startup / resume / compaction 復帰）に flywheel の現況を context に注入する。
 #
 # dormant: 入口案内（v0.4.1）。「最初は start を使え」を強制でなく示唆で伝える。
-#   - gate を閉じない（FR-15 intent-router と違い state を作らない。思い出させるだけ）
-#   - FLYWHEEL_AUTO の状態を併記し、常用するなら auto-engage（FR-15）を勧める
+#   - gate を閉じない（state を作らない。思い出させるだけ）
 #
 # active: 再アンカー（v0.4.3）。state.json は context 非依存（FR-7）だが、モデルの context は
 #   compaction / セッション切替で消える。phase / goal / 次にすべきことを再注入して
@@ -50,13 +49,6 @@ if [[ "${FLYWHEEL_PLAN:-}" == "1" ]]; then
 else
   plan_line="plan route: off（export FLYWHEEL_PLAN=1 で「plan mode = flywheel」になる）"
 fi
-if [[ "${FLYWHEEL_AUTO:-}" == "1" ]]; then
-  auto_line="auto-engage: ON（FLYWHEEL_AUTO=1。「〜を実装して/作って」で自動起動・legacy）"
-else
-  auto_line="auto-engage: off（legacy。plan route が上位互換）"
-fi
-
 emit "🛞 flywheel は dormant（設計ゲートは開いており通常作業の邪魔はしません）。
   しっかり作るなら: Shift+Tab で plan mode / 明示起動: /flywheel:start <作りたいこと> / $FW_CLI start \"<作りたいこと>\"
-  ${plan_line}
-  ${auto_line}"
+  ${plan_line}"
