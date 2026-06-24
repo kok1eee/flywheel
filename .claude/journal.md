@@ -3,6 +3,31 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-24 12:36 [ip-10-0-67-244]
+
+### Recap
+flywheel repo 自身に **5 commit を origin/main へ出荷**（すべて flywheel の harness で dogfood:
+grill→設計ゲート→eval→監視 council→done）。FR-44/v0.8.24=**GitHub Actions CI**（`test/run-all.sh`
+共有 runner + `.github/workflows/ci.yml`、監視指摘で `test/run-all-aggregation.sh` を足し失敗集約を
+runtime 検証）/ FR-33 follow-up docs=chain auto-start over-reach を ROADMAP:54 に追記 /
+FR-45/v0.8.25=**intent-router（legacy auto-engage hook）削除**（`hooks/intent-router.sh` 等撤去 +
+再混入ガード `test/intent-router-removed.sh`）/ FR-46/v0.8.26=**chain auto-checkpoint**
+（`fw_chain_checkpoint`@`hooks/lib/common.sh` を `loop-driver.sh` の done→chain 境界で呼び
+jj describe+new・jj のみ/git は degrade・`test/chain-checkpoint.sh` C1-C4）/ FR-47/v0.8.27=
+**session-greeter に `/flywheel:guide` 導線**。監視 council が毎回実バグ捕捉（CI 失敗集約パス未検証 /
+chain-checkpoint の `cut -c` バイト切断→`${var:0:72}` 文字単位）。FR-46 は自分の done で自己発火し
+FR-46 の work を独立 change に分離（dogfood 実証）。flywheel は **dormant・gate 開**。全 push 済み。
+
+### Next
+- **GitHub Actions の初回 CI run が green か確認**（FR-44 Done の最後のピース・post-push に deferred）。
+  `/ci-watch` か GitHub の Actions タブを見る
+- **B 案（global CLAUDE.md に flywheel onboarding pointer）は保留**（ROADMAP onboarding epic に未着手）。
+  A=greeter 導線で不足が実証されたら着手。「plan route で提案・人間承認」に留める（auto-engage 復活を避ける）
+- ROADMAP の deferred: **backlog の remove/reorder CLI 不在**（dev infra epic）/ chain-checkpoint の
+  **done→chain フル loop-driver 統合テスト**（helper 単体 + C4 baseline 連鎖は済・full は jj 化した
+  `test/chain-lib.sh` が要る）
+- **adopt chain の「着手前 go/no-go checkpoint」**（ROADMAP:54 FR-33 follow-up）は未着手
+
 ## 2026-06-18 16:28 [ip-10-0-67-244]
 
 ### Recap
