@@ -22,6 +22,9 @@ emit() {  # $1 = additionalContext
   exit 0
 }
 
+# 改善A: evolve 停滞リマインダ（停滞時のみ非空・失敗しても greeter を止めない）
+evolve_line="$(fw_evolve_staleness || true)"
+
 # --- active: 再アンカー ---
 if fw_state_exists; then
   phase="$(fw_phase)"
@@ -33,7 +36,8 @@ if fw_state_exists; then
     implementing|polish|eval)
       next="→ 実装を続けてください。停止すると loop-driver が eval（$(fw_get '.eval_cmd')）で done を判定します。" ;;
     done)
-      next="→ goal は達成済み。次へ: $FW_CLI next（backlog から次を起動）/ $FW_CLI reset（dormant に戻す）" ;;
+      next="→ goal は達成済み。次へ: $FW_CLI next（backlog から次を起動）/ $FW_CLI reset（dormant に戻す）${evolve_line:+
+  $evolve_line}" ;;
     *)
       next="" ;;
   esac
@@ -51,5 +55,6 @@ else
 fi
 emit "🛞 flywheel は dormant（設計ゲートは開いており通常作業の邪魔はしません）。
   しっかり作るなら: Shift+Tab で plan mode / 明示起動: /flywheel:start <作りたいこと> / $FW_CLI start \"<作りたいこと>\"
-  ${plan_line}
+  ${plan_line}${evolve_line:+
+  $evolve_line}
   迷ったら /flywheel:guide（使い方・ルート選択・詰まりの地図）"

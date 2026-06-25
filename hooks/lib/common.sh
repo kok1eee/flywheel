@@ -364,20 +364,52 @@ fw_count_fails() {
   if [[ "$found" -eq 1 ]]; then printf '%s\n' "$sum"; else printf '\n'; fi
 }
 
-# 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、
-# 失敗しても本処理を妨げない。置き場は plugin データ領域（evolve がここを読む）。
-fw_log_usage() {
-  # データ解決は evolve（skills/evolve/SKILL.md Step 1）と揃える: CLAUDE_PLUGIN_DATA →
-  # plugin データ領域 → 最後の保険。CLI 経路（command の ! 行 / 素の flywheel）は
-  # CLAUDE_PLUGIN_DATA 未設定なので、ここで plugin データ領域へ寄せないと evolve が読む
-  # 本番 CSV と置き場が割れる（FR-31 の観測漏れの残り。経路で goal:start が別ファイルに散る）。
-  local d csv
+# plugin データ領域（skill-usage.csv 等の置き場）を解決する単一の出所。CLAUDE_PLUGIN_DATA →
+# plugin データ領域（~/.claude/plugins/data/flywheel-*）→ 最後の保険、の順。書き手 fw_log_usage と
+# 読み手 fw_evolve_staleness / evolve skill が同じ置き場を共有する（CLI 経路は CLAUDE_PLUGIN_DATA
+# 未設定なので、ここで plugin データ領域へ寄せないと evolve が読む本番 CSV と置き場が割れる＝FR-31）。
+fw_data_dir() {
+  local d
   d="${CLAUDE_PLUGIN_DATA:-$(ls -d "$HOME"/.claude/plugins/data/flywheel-* 2>/dev/null | head -1)}"
-  d="${d:-$HOME/.claude/flywheel-data}"
+  printf '%s\n' "${d:-$HOME/.claude/flywheel-data}"
+}
+
+# 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、失敗しても本処理を妨げない。
+fw_log_usage() {
+  local d csv
+  d="$(fw_data_dir)"
   mkdir -p "$d" 2>/dev/null || return 0
   csv="$d/skill-usage.csv"
   [[ -f "$csv" ]] || echo "timestamp,skill" > "$csv" 2>/dev/null || return 0
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),$1" >> "$csv" 2>/dev/null || true
+}
+
+# 改善A: evolve（自己改善 skill）の停滞度を判定し、停滞時のみリマインダ1行を echo する。
+# skill-usage.csv の最終 evolve からの経過日数 / その後の未消化 goal 数で判定。非停滞・データ無しは無音。
+# greeter（SessionStart・set -euo pipefail）から呼ばれるため、何が失敗しても greeter を壊さず常に return 0。
+# 閾値は env 上書き可（EVOLVE_STALE_DAYS / EVOLVE_STALE_GOALS）。CSV パス解決は fw_log_usage と同一。
+fw_evolve_staleness() {
+  local csv last lineno evolve_ts evolve_epoch now days goals_since date_str
+  local stale_days="${EVOLVE_STALE_DAYS:-7}" stale_goals="${EVOLVE_STALE_GOALS:-5}"
+  csv="$(fw_data_dir)/skill-usage.csv"
+  [[ -f "$csv" ]] || return 0
+  last="$(grep -nE ',(flywheel:)?evolve$' "$csv" 2>/dev/null | tail -1 || true)"
+  if [[ -z "$last" ]]; then
+    echo "🧬 evolve 未実行（記録なし）— /flywheel:evolve で skill に学びを還元"
+    return 0
+  fi
+  lineno="$(printf '%s' "$last" | cut -d: -f1)"
+  evolve_ts="$(printf '%s' "$last" | sed -E 's/^[0-9]+://' | cut -d, -f1)"
+  evolve_epoch="$(date -u -d "$evolve_ts" +%s 2>/dev/null || echo 0)"
+  now="$(date -u +%s)"
+  days=$(( evolve_epoch > 0 ? (now - evolve_epoch) / 86400 : 9999 ))
+  goals_since="$(tail -n +"$((lineno + 1))" "$csv" 2>/dev/null | grep -cE ',goal:' || true)"
+  goals_since="${goals_since:-0}"
+  if (( days >= stale_days || goals_since >= stale_goals )); then
+    date_str="${evolve_ts%%T*}"
+    echo "🧬 evolve 未実行: 最終 ${date_str}（${days}日前・直近 ${goals_since} goal 未消化）— /flywheel:evolve で skill に学びを還元"
+  fi
+  return 0
 }
 
 # phase 述語（phase の意味論を1箇所に集約。各 hook は case 文を持たない）。
