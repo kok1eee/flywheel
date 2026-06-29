@@ -25,6 +25,8 @@ Usage:
   flywheel reset             state を破棄して dormant に戻す（門が開く）
   flywheel add "<goal>" [--eval ..][--no-polish][--adopt][--notes "<Boundary/曖昧点>"]   backlog に goal を追加（--adopt: next で掘らず結晶化起動＝adopt chain。--notes: /add 軽量 grill の成果を design の種に）
   flywheel list              backlog 一覧
+  flywheel backlog rm <n>            backlog の n 番目（list の番号）を削除
+  flywheel backlog mv <n> <pos>      backlog の n 番目を pos 位置へ移動（並べ替え）
   flywheel next              dormant/done のとき backlog 先頭を pop して start
   flywheel _advance <to> <by>  phase 遷移（hook 内部用。FLYWHEEL_HOOK=1 必須・手動使用は拒否される）
   flywheel watch-focus "<text>"   監視 council の重点を指定（FR-30 HITL）。overseer が観測者に渡す
@@ -96,6 +98,10 @@ _start_goal() {  # $1 goal, $2 eval_cmd(空なら自動検出), $3 polish, $4 en
   echo "→ design.md を書くと validate-plan が自動実行され、合格で実装ゲートが開きます。"
   echo "→ 連続自律で回すなら native の /goal も併用推奨（※ /goal は UI コマンド。モデルは起動できないため、ユーザーが打つ）。"
 }
+
+# 改善B: backlog の 1-indexed 位置が有効か（整数かつ 1..total）。rm/mv の範囲チェックを集約（rule-of-three）。
+# 先頭ゼロを許さない（^[1-9][0-9]*$）: (( )) の8進解釈 と sed/awk の10進解釈の乖離（mv の silent 破損）を防ぐ。
+_backlog_int_in_range() { [[ "$1" =~ ^[1-9][0-9]*$ ]] && (( $1 <= ${2:-0} )); }
 
 cmd="${1:-}"; shift || true
 case "$cmd" in
@@ -258,6 +264,41 @@ case "$cmd" in
     fw_set_json repos "$_rj"
     echo "🔧 flywheel repos を登録（diff/polish が合算します。列挙したパスで置き換え）:"
     fw_get '.repos' | jq -r '.[]? | "  \(.path)  (baseline: \(.baseline[0:12]))"' 2>/dev/null || true
+    ;;
+  backlog)
+    # 改善B: backlog（未来の goal キュー）の remove/reorder。CLI からの backlog.jsonl 編集は
+    # C-2 対象外（禁止はモデルの直編集のみ）。進行中 goal の state.json には触れないので phase ガード不要。
+    sub="${1:-}"; shift || true
+    case "$sub" in
+      rm)
+        n="${1:-}"
+        [[ -s "$FW_BACKLOG" ]] || { echo "flywheel: backlog は空です" >&2; exit 1; }
+        total="$(fw_backlog_count)"
+        _backlog_int_in_range "$n" "$total" || { echo "flywheel backlog rm <n>: n は 1..$total（list の番号・受領 '$n'）" >&2; exit 1; }
+        removed="$(sed -n "${n}p" "$FW_BACKLOG" | jq -r '.goal')"
+        sed "${n}d" "$FW_BACKLOG" > "$FW_BACKLOG.tmp" && mv "$FW_BACKLOG.tmp" "$FW_BACKLOG"
+        echo "🗑️ backlog #$n を削除（残 $(fw_backlog_count) 件）: $removed"
+        ;;
+      mv)
+        n="${1:-}"; pos="${2:-}"
+        [[ -s "$FW_BACKLOG" ]] || { echo "flywheel: backlog は空です" >&2; exit 1; }
+        total="$(fw_backlog_count)"
+        { _backlog_int_in_range "$n" "$total" && _backlog_int_in_range "$pos" "$total"; } || { echo "flywheel backlog mv <n> <pos>: n/pos は 1..$total（受領 n=$n pos=$pos）" >&2; exit 1; }
+        [[ "$n" == "$pos" ]] && { echo "flywheel backlog mv: #$n は同位置（no-op）"; exit 0; }
+        moved_goal="$(sed -n "${n}p" "$FW_BACKLOG" | jq -r '.goal')"
+        # n を抜いて pos 位置へ挿入。JSON 行は awk -v を経由させず原文のまま保持する。
+        awk -v n="$n" -v pos="$pos" '
+          { lines[NR]=$0 }
+          END { total=NR; moved=lines[n]; c=0
+                for(i=1;i<=total;i++) if(i!=n) rest[++c]=lines[i]
+                r=0; for(p=1;p<=total;p++){ if(p==pos) print moved; else print rest[++r] } }
+        ' "$FW_BACKLOG" > "$FW_BACKLOG.tmp" && mv "$FW_BACKLOG.tmp" "$FW_BACKLOG"
+        echo "↕️ backlog #$n → #$pos へ移動: $moved_goal"
+        ;;
+      *)
+        echo "flywheel backlog <rm <n> | mv <n> <pos>>（閲覧は flywheel list）" >&2; exit 1
+        ;;
+    esac
     ;;
   reset)
     rm -f "$FW_STATE"

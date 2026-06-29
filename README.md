@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.28 / MIT License
+v0.8.29 / MIT License
 
 ## インストール
 
@@ -81,6 +81,8 @@ flywheel add "機能A" --eval "pytest"
 flywheel add "機能B" --no-polish
 flywheel list                                   # backlog 一覧
 flywheel next                                   # done/dormant のとき先頭を pop して start
+flywheel backlog rm 2                           # backlog の 2 番目を削除（番号は list 参照・FR-49）
+flywheel backlog mv 3 1                          # 3 番目を先頭へ移動（並べ替え・FR-49）
 ```
 
 ### コアフロー
@@ -158,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.29
+- **backlog の remove / reorder CLI（FR-49・改善B）** — adopt chain（FR-33）主経路化（最近 adopt 18 > start 17）で backlog を積む頻度が上がったが、`flywheel add`（末尾追加）と `next`（先頭 pop）しか無く、誤積み・重複・優先変更を直せなかった（`.flywheel/` は C-2 でモデル編集禁止＝手編集も不可）。`flywheel backlog rm <n>`（n 番目を削除）と `flywheel backlog mv <n> <pos>`（並べ替え）を追加。番号は `flywheel list` の 1-indexed。範囲外・非整数・空 backlog は `exit 1`。**CLI からの backlog.jsonl 編集は C-2 対象外**（禁止はモデルの直編集のみ・進行中 goal の state.json には触れないので phase ガード不要）。mv は awk で原ファイルを配列読みし n を抜いて pos へ挿入（JSON 行を `-v` 経由させず原文保持）。`test/backlog-cli.sh`(C1 rm / C2 範囲外 / C3-C4 mv 双方向 / C5 no-op・範囲外 / C6 空)。出所: 本セッションの skill-usage 分析（改善B）。
 
 ### 0.8.28
 - **evolve 未実行リマインダ（FR-48・改善A）** — skill-usage.csv 419 events に対し `flywheel:evolve` の実行は **1 回**（最終 2026-06-15）＝自己改善ループに起動トリガーが無く停止していた（journal の Next が毎回「evolve 定期稼働」と書くのに誰も回さない）。`session-greeter`（SessionStart）の dormant / done 案内に「`🧬 evolve 未実行: 最終 <日付>（N日前・直近 M goal 未消化）— /flywheel:evolve で skill に学びを還元`」を1行表示し、人が evolve を回すよう促す。`fw_evolve_staleness`（`lib/common.sh`）が CSV の最終 evolve から経過日数と未消化 goal 数を算出し、閾値超（既定 **7日 / 5 goal**・`EVOLVE_STALE_DAYS`/`EVOLVE_STALE_GOALS` で上書き可）で発火。CSV 欠落・非停滞は無音（greeter を壊さない）。**nudge のみ・sdtab 週次 auto-run は不採用**（grill で確定＝evolve は SKILL.md の Gotchas を編集するので人がレビュー・HOTL「決める＝人間」を保つ）。`test/evolve-nudge.sh`(C1 日数閾値 / C2 fresh 非表示 / C3 goal 数閾値 / C4 CSV 欠落で無害)。**出所: 本セッションの skill-usage 分析（改善 A→B→C の A）**。
