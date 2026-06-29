@@ -3,6 +3,47 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-29 13:29 [ip-10-0-67-244]
+
+### Recap
+**skill-usage.csv 分析（419 events）→ 改善 A→B→C を3つとも flywheel harness で dogfood 出荷**（v0.8.28-30 /
+FR-48-50・各 goal を独立 change で push・`main@origin = e90a829a`）。発端: ユーザーの「最近 flywheel 何回か
+動いてるけど改善点は?」→ 実数集計で **evolve が 419 events で 1 回（最終 6-15）= 自己改善ループ停止** を最大の
+発見として特定。経路は adopt 主経路化（最近 adopt 18 > start 17 > plan 1）。
+- **A（FR-48 / v0.8.28）**: `session-greeter` に **evolve 未実行リマインダ**（`fw_evolve_staleness`: CSV の最終
+  evolve から経過日数+未消化 goal 数を算出し閾値超で dormant/done greeting に1行）。grill で **nudge のみ・
+  無人 auto-run 不採用**（Gotchas 編集は人がレビュー＝HOTL）。**本番で即稼働確認**（greeter が「13日前・74 goal
+  未消化」表示）。監視 council が done 分岐の test 漏れ捕捉→C5-C7 追加。
+- **B（FR-49 / v0.8.29）**: `flywheel backlog rm <n>` / `mv <n> <pos>`（adopt 主経路化で誤積み/重複を直せない
+  問題）。監視 council が `_backlog_int_in_range` の **8進数誤解釈（先頭ゼロ→mv の silent データ破損）** を捕捉
+  →regex `^[1-9][0-9]*$`＋回帰テスト。CLI 編集は C-2 対象外。
+- **C（FR-50 / v0.8.30）**: **monitor verdict 再利用**（grill で「無変更時の安全な省略」を選択）。`monitor=clean` を
+  **baseline 累積 diff の指紋**に紐付け、loop-driver の clean ゲートが**指紋一致時のみ done**（無変更=再 council
+  せず＝529 源の軽量化）＋ **clean 記録後の変更を done すり抜けさせない stale-clean 穴塞ぎ**。後方互換（指紋なし
+  clean は従来 done）で既存 clean→done 系（polish-monitor-fuse/start-chain/verification-merge）全緑。監視 council
+  が **指紋が baseline 累積でない欠陥（plain jj diff は commit でゼロリセット・F001）を自己捕捉**→`fw_repo_diff_lines`
+  と同規約の `jj diff --from $base` に修正。**C 自身の done が新 fingerprint ゲートで承認された**（履歴に
+  `monitor clean (fingerprint 一致)`・完璧な dogfood）。
+3 goal とも監視 council が**本物の drift を捕捉**（A=test 漏れ / B=8進バグ / C=baseline 累積欠陥）＝dogfood の真価。
+
+**個人レイヤー（flywheel 外・dotfiles 側で別 push）**: `flywheel-backlog-sync` skill（flywheel goal を Backlog
+REVOLUTION に user-triggered 一方向ミラー・公開 plugin はノータッチ）／自己参照 symlink 事故の解明＋
+`rules/dotfiles.md` 環境判定型に改訂＋feedback memory／Claude Code 2.1.191・193・195 の changelog レビュー
+（**2.1.195 の hook matcher exact-match 化は flywheel/個人 hook とも無傷を検証**＝ハイフン matcher 不使用）。
+
+### Next
+- **evolve を一度回す**: A で導線はできた。74 goal 分の学びが未消化なので `/flywheel:evolve` で skill の Gotchas /
+  improvements.md に還元する（A の狙いの実行）。これが回り始めれば ROADMAP の deferred tail も拾われ始める見込み。
+- **ROADMAP の deferred tail（毎回未消化）**: evolve 定期 auto-run（A は nudge のみ・sdtab 週次は grill で不採用）/
+  マルチレポ follow-up test / `flywheel note` / FR-37 follow-up（move/rename の add≈del skip）。
+- **C の既知限界**: multi-repo の宣言 sibling 指紋は v1 非対象（`fw_impl_fingerprint` は FW_ROOT のみ）。sibling 変更後の
+  stale clean は塞がらない＝multi-repo goal では従来どおり毎回 council。
+- **fingerprint/diff gate を次に触るときの memo**（council 由来）: ①flywheel test は git+untracked、本番は jj+gitignore で
+  「同結果を別機構で達成」＝gitignore 依存の不変条件が緑でも未検証になりやすい（C5 で `.flywheel` 除外を1つ assert 済）
+  ②diff gate は必ず **baseline 累積**（`jj diff --from $base`）で取る＝plain `jj diff` は commit でゼロリセットする罠。
+- **second-brain（個人 vault）は未 push**（remote `kok1eee/second-brain` 不在・EC2 は tazawa-masayoshi 認証）。
+  Claude Code 2.1.191/195 の changelog は `_raw/` に capture 済み・`/wiki-ingest` 待ち。push したいなら repo 作成から。
+
 ## 2026-06-24 12:36 [ip-10-0-67-244]
 
 ### Recap
