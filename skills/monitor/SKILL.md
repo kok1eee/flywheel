@@ -112,6 +112,7 @@ flywheel monitor-set drift design "<reason>"
 <!-- 以下は実行経験から自動追記。不要なら削除してよい -->
 - **[2026-06-15] forked 実行（context:fork）が verdict を出さず空振りする**: `Skill: flywheel:monitor` が `(forked execution)` で「タスク待ち / ready」等の汎用応答だけ返し、観測者 fan-out も monitor-set も実行しないことがある（FR-30 実装時に複数回再現）。fork が走ったと信じ込まず、overseer の手順（context 収集 → drift-observer を fan-out → 集約 → `flywheel monitor-set`）を**呼び出し側で inline 実行**する。monitor-set が記録されない限り loop-driver は pending のまま再 steer するので、空振りは放置すると veto/monitor cap まで steer が続く。
 - **[2026-06-15] 修正後に stale な drift verdict で1回だけ余分に差し戻される**: council が drift を記録 → それを直しても、次の停止で loop-driver は**記録済みの drift を消費して** implementing に1回差し戻す（「修正して続けて」）。既に直していれば再修正せずそのまま通す。drift 枝が monitor を null クリアするので、その次の停止で pending → 再検証（修正後の実装に対して）に進む。stale verdict の bounce を「まだ直っていない」と誤読しない。
+- **[2026-06-29] FR-50 後: `monitor-set clean` は「最後のツリー変更」として記録する**: clean verdict は記録時の作業ツリー指紋（baseline 累積 diff の sha256）に紐付く（FR-50）。`monitor-set clean` の**後に**追跡ファイルを1つでも編集して停止すると、clean ゲートで指紋不一致→done せず**再 council**（stale-clean 穴塞ぎの意図どおりだが、知らないと「clean を記録したのに done しない」と驚く）。docs / version bump 等の仕上げは monitor-set clean の**前**に終わらせ、monitor-set clean を最後の編集にする。`.flywheel/` は gitignore で指紋に出ないので state 書き込み自体は無害。
 
 ## 出力
 
