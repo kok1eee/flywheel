@@ -196,12 +196,24 @@ EOF
         ;;
     esac
   elif [[ "$mstatus" == "clean" ]]; then
-    # monitor 通過 → done へ進む（FR-34）。挙動検証は独立な monitor council に統合済み:
-    # observer-behavior レンズが「runnable なら runtime エビデンスがあるか」を判定し、薄い eval の
-    # runnable goal で runtime 未検証なら drift(impl) として戻す。self-graded な検証ゲート
-    # （旧 FR-32）は撤去した（done を閉めるのは eval(客観)+monitor(独立)の2つだけ）。
-    fw_set_json monitor null; fw_set_json monitor_attempts 0
-    fw_advance done "loop-driver: eval pass ($eval_cmd) + monitor clean"
+    # monitor 通過 → done（FR-34）。挙動検証は独立 monitor council に統合済み（旧 FR-32 撤去・
+    # done を閉めるのは eval(客観)+monitor(独立)の2つだけ）。
+    # 改善C(FR-50): clean は記録時の作業ツリー指紋に紐付く。現在の指紋と一致するときだけ done＝
+    # 「同じコード=同じ結論」の安全な再利用（無変更なら再 council せず）。不一致＝clean 記録後に
+    # コードが変わった stale clean なので done をすり抜けさせず再 council（fail-closed）。
+    # 指紋未記録（mfp 空＝旧 verdict / 指紋を持たないテスト）は後方互換で従来どおり done。
+    mfp="$(fw_get '.monitor.fingerprint')"
+    if [[ -z "$mfp" || "$mfp" == "$(fw_impl_fingerprint)" ]]; then
+      fw_set_json monitor null; fw_set_json monitor_attempts 0
+      fw_advance done "loop-driver: eval pass ($eval_cmd) + monitor clean${mfp:+ (fingerprint 一致)}"
+    else
+      # 指紋不一致 = clean 記録後にコードが変わった stale clean。pending に戻して再検証を促す。
+      # cap 執行は次停止の pending 枝（mstatus==pending）に委ねる＝再 prime+escalate を二重に書かない。
+      fw_set_json monitor '{"status":"pending"}'
+      fw_log_usage "steer:monitor"
+      echo "🔎 flywheel: clean 記録後にコードが変わりました（指紋不一致）。未検証の変更を Skill: flywheel:monitor で再検証してください（古い clean で done をすり抜けさせません）。" >&2
+      exit 2
+    fi
   else
     # fail-closed: 未知の verdict（typo 等）は信用しない。クリアして再検証を強制し、done をすり抜けさせない。
     fw_set_json monitor null

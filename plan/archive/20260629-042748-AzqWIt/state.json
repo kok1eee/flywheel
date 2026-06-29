@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "monitor council の verdict 再利用（軽量化・改善C）: monitor=clean を作業ツリーの fingerprint に紐付け、loop-driver の clean ゲートで指紋一致時のみ done。無変更なら再 council せず（軽量化）／clean 記録後にコードが変わった stale clean は done をすり抜けさせず再検証（穴塞ぎ）。ゲートの独立性は不変＝verdict 再利用は『同じコード=同じ結論』の安全な省略のみ",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "",
+  "baseline_rev": "74be57ad9dce07cd528d09bcaeb16954c27f97e6",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-29T04:05:51Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-29T04:06:27Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-29T04:08:09Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-29T04:10:39Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-29T04:10:49Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-29T04:27:39Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-29T04:27:48Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

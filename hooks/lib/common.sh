@@ -412,6 +412,21 @@ fw_evolve_staleness() {
   return 0
 }
 
+# 改善C(FR-50): baseline からの累積実装 diff の指紋（sha256）。monitor=clean をこの指紋に紐付け、
+# loop-driver の clean ゲートが「指紋一致時のみ done」にする（無変更=再 council せず／変更後の
+# stale clean は再検証）。**baseline 累積**（fw_repo_diff_lines と同規約の `jj diff --from $base`）を
+# 使う＝goal 途中で commit/squash しても指紋が揺れない（plain `jj diff` だと commit でゼロリセット）。
+# .flywheel/ は gitignore で diff に出ない＝state 変更で指紋が揺れない。baseline 無し / diff 空 /
+# VCS 不能なら空指紋 → 呼び出し側は「指紋未記録」と同じ後方互換 done に degrade（VCS 不能環境のみ）。
+fw_impl_fingerprint() {
+  local base d
+  base="$(fw_baseline_rev)"
+  [[ -n "$base" ]] || return 0
+  d="$( cd "$FW_ROOT" 2>/dev/null && { jj diff --from "$base" --git 2>/dev/null || git diff "$base" 2>/dev/null; } )" || true
+  [[ -n "$d" ]] && command -v sha256sum >/dev/null 2>&1 || return 0
+  printf '%s' "$d" | sha256sum | awk '{print $1}'
+}
+
 # phase 述語（phase の意味論を1箇所に集約。各 hook は case 文を持たない）。
 fw_gate_closed() { case "$1" in no-spec|designing) return 0 ;; *) return 1 ;; esac; }   # 実装ブロック中
 fw_work_active() { case "$1" in spec-ready|implementing|polish|eval) return 0 ;; *) return 1 ;; esac; }  # loop が回すべき作業中 phase

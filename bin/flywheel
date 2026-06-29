@@ -190,8 +190,10 @@ case "$cmd" in
     case "$_ml" in ""|implementing|design|requirements) ;; *) echo "flywheel monitor-set: level は implementing|design|requirements（受領: '$_ml'）" >&2; exit 1 ;; esac
     [[ "$_ms" == "drift" && -z "$_ml" ]] && { echo "flywheel monitor-set: drift には level（implementing|design|requirements）が必要" >&2; exit 1; }
     # 状態書き込みは fw_set_json（atomic な tmp+mv を集約）に通す。verdict オブジェクトだけ組む。
-    fw_set_json monitor "$(jq -cn --arg s "$_ms" --arg l "$_ml" --arg r "$_mr" \
-      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, level:$l, reason:$r, ts:$ts}')"
+    # 改善C(FR-50): clean は作業ツリーの指紋に紐付ける（loop-driver が一致時のみ done）。drift/pending は空。
+    _mfp=""; [[ "$_ms" == "clean" ]] && _mfp="$(fw_impl_fingerprint || true)"   # || true: no-VCS で verdict 記録前に set -e 中断しない
+    fw_set_json monitor "$(jq -cn --arg s "$_ms" --arg l "$_ml" --arg r "$_mr" --arg fp "$_mfp" \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, level:$l, reason:$r, fingerprint:$fp, ts:$ts}')"
     echo "🔎 flywheel monitor: status=$_ms${_ml:+ level=$_ml}${_mr:+ reason=$_mr}"
     ;;
   set-eval)

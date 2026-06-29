@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.29 / MIT License
+v0.8.30 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.30
+- **monitor verdict 再利用（FR-50・改善C）** — 監視 council（3 observer fan-out）は done 前の最重量オペで 529 被弾源。grill で「verdict 再利用（無変更時）」を選択（gate を一切弱めない安全な軽量化）。`monitor=clean` を作業ツリーの**指紋（sha256 of baseline 累積 `jj diff --from`/`git diff`）に紐付け**、loop-driver の clean ゲートが**指紋一致時のみ done**（無変更＝「同じコード＝同じ結論」で再 council せず）。あわせて**現状の穴を塞ぐ**: clean 記録後にモデルがコードを変えても eval さえ緑なら done をすり抜けていた（monitor 再検証なし）→ 指紋不一致なら stale clean として再 council（fail-closed）。`.flywheel/`（gitignore）は diff に出ず state 変更で指紋が揺れない。**後方互換**: 指紋未記録の clean（旧 verdict / 指紋なしテスト）は従来どおり done。multi-repo の sibling 指紋は v1 非対象（既知の限界）。`fw_impl_fingerprint`(common.sh) + `monitor-set` の clean 指紋付与 + loop-driver clean ゲート。`test/monitor-fingerprint.sh`(C1 記録 / C2 一致→done / C3 不一致→再council / C4 後方互換)。出所: 本セッションの skill-usage 分析（改善C）。
 
 ### 0.8.29
 - **backlog の remove / reorder CLI（FR-49・改善B）** — adopt chain（FR-33）主経路化（最近 adopt 18 > start 17）で backlog を積む頻度が上がったが、`flywheel add`（末尾追加）と `next`（先頭 pop）しか無く、誤積み・重複・優先変更を直せなかった（`.flywheel/` は C-2 でモデル編集禁止＝手編集も不可）。`flywheel backlog rm <n>`（n 番目を削除）と `flywheel backlog mv <n> <pos>`（並べ替え）を追加。番号は `flywheel list` の 1-indexed。範囲外・非整数・空 backlog は `exit 1`。**CLI からの backlog.jsonl 編集は C-2 対象外**（禁止はモデルの直編集のみ・進行中 goal の state.json には触れないので phase ガード不要）。mv は awk で原ファイルを配列読みし n を抜いて pos へ挿入（JSON 行を `-v` 経由させず原文保持）。`test/backlog-cli.sh`(C1 rm / C2 範囲外 / C3-C4 mv 双方向 / C5 no-op・範囲外 / C6 空)。出所: 本セッションの skill-usage 分析（改善B）。
