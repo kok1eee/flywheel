@@ -3,6 +3,43 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
+## 2026-06-29 21:33 [ip-10-0-67-244]
+
+### Recap
+**前セッションの Next 3本（evolve / multi-repo 指紋 / second-brain push）を順番に処理し、flywheel の2 change を
+origin/main に push（`main@origin = 110b739d`）**。
+- **#1 evolve（`docs sosqllrx`）**: 6-15 以降 76 goal 未消化だった evolve を実行。Quality Gate を通った2件のみ追記
+  — grill に「人レビュー成果物（Gotchas/skills/state）の自動化案は auto-run を即採用せず HOTL 境界を1枝立てて
+  escalate」（FR-48 で nudge のみ採用に着地）、monitor に「観測者は index/range の数値パース境界（前ゼロ→8進・
+  負数・0）を突く」（FR-49 で `_backlog_int_in_range` の silent データ破損を council が捕捉）。FR-50 fingerprint と
+  test/prod 機構差は既消化のためスキップ。greeter staleness を疑ったが `fw_evolve_staleness` はバグなし（TZ 読み違い）。
+- **#2 multi-repo 指紋 = v0.8.31 / FR-50 follow-up（`feat kmurymkz`）**: flywheel harness で dogfood
+  （add→grill→設計ゲート→eval→監視 council→done）。`fw_impl_fingerprint` が FW_ROOT の diff だけを hash し宣言
+  sibling（`state.repos`）を見ない非対称（=multi-repo stale clean の穴）を、`fw_goal_diff_lines` と同一規約
+  （FW_ROOT 先頭→jq 配列順・各 repo 自身の凍結 baseline）で連結し**空判定を連結後**に移して解消。per-repo diff
+  プリミティブ `fw_repo_git_diff` 抽出。**監視 council（5観点+確認 observer）が本物の drift を3件捕捉**＝dogfood の
+  真価: (a) FW_ROOT base が live `fw_baseline_rev`(@-/HEAD) で mid-goal commit でゼロリセットする FR-50 由来の潜在
+  バグ→凍結 `state.baseline_rev` 読みに修正（C9 回帰追加）、(b) version bump 漏れ→v0.8.31（plugin/marketplace/
+  README/ROADMAP）、(c) 旧 C6 が seed 残骸で false-pass し得た→`pre=空` を pin。`test/monitor-fingerprint.sh`
+  を C1-C9 に拡張 + multirepo-diff + run-all 全緑。**この変更の done を、今回直した fingerprint ゲート自身が承認**
+  （`eval → done [monitor clean (fingerprint 一致)]`）＝完璧な dogfood。
+- **#3 second-brain push 整備**: journal Next が **stale** と判明。実際は remote `git@github.com-kok1eee:kok1eee/
+  second-brain.git` が**存在**し local main = `@origin = dd788efd` で**同期済み**、`_raw` captures も `_archived/` に
+  ingest 済み（6-25 sweep）。やることなし。
+- monitor の forked execution が空振り（evolve で追記した gotcha どおり）→ overseer 手順を inline 実行で回避。
+  stop-hook 連続 nudge で monitor cap 8 到達→implementing 差し戻し→monitor-set clean 記録で done に到達。
+
+### Next
+- **ROADMAP follow-up（v0.8.31 council 由来・low）**: 本番 jj は untracked を snapshot するため、sibling 側
+  `.gitignore` が `.flywheel` を除外していないと state churn で指紋が揺れ無限 re-council し得る。`flywheel repos`
+  登録時に sibling の `.flywheel` gitignore を警告/要求する設計判断が未了（C5 は FW_ROOT 側のみ assert）。ROADMAP
+  マルチレポ行に記載済。
+- **ROADMAP deferred tail（依然未消化）**: evolve 定期 auto-run（FR-48 は nudge のみ）/ マルチレポ follow-up test
+  （jj diff path / error 経路）/ `flywheel note` / FR-37 follow-up（move/rename の add≈del skip）。
+- **monitor の forked execution 空振り**は improvements.md（6-15）に既出。fork 堅牢化 or inline 化の設計判断が
+  依然 deferred。stop-hook nudge ループで monitor cap を浪費する UX も合わせて検討余地（inline council を回す間
+  cap が減る）。
+
 ## 2026-06-29 13:29 [ip-10-0-67-244]
 
 ### Recap
