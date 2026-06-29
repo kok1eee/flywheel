@@ -412,17 +412,32 @@ fw_evolve_staleness() {
   return 0
 }
 
+# <root> の <base> からの累積 raw diff（--git 形式）。指紋の per-repo プリミティブ。
+# jj 優先・pure git は git diff に degrade。失敗・VCS 不能は空（set -e でも中断しない）。
+fw_repo_git_diff() {
+  ( cd "$1" 2>/dev/null && { jj diff --from "$2" --git 2>/dev/null || git diff "$2" 2>/dev/null; } ) || true
+}
 # 改善C(FR-50): baseline からの累積実装 diff の指紋（sha256）。monitor=clean をこの指紋に紐付け、
 # loop-driver の clean ゲートが「指紋一致時のみ done」にする（無変更=再 council せず／変更後の
-# stale clean は再検証）。**baseline 累積**（fw_repo_diff_lines と同規約の `jj diff --from $base`）を
-# 使う＝goal 途中で commit/squash しても指紋が揺れない（plain `jj diff` だと commit でゼロリセット）。
-# .flywheel/ は gitignore で diff に出ない＝state 変更で指紋が揺れない。baseline 無し / diff 空 /
+# stale clean は再検証）。**baseline 累積**（fw_goal_diff_lines と同規約＝凍結 state.baseline_rev からの
+# `jj diff --from`）を使う＝goal 途中で commit/squash しても指紋が揺れない（live `@-` や plain `jj diff`
+# だと commit でゼロリセットする罠。FW_ROOT も sibling も凍結 baseline で対称に取る）。
+# .flywheel/ は gitignore で diff に出ない＝state 変更で指紋が揺れない。
+# FR-A/B（multi-repo）: FW_ROOT に続けて宣言 sibling repo（state.repos）を fw_goal_diff_lines と
+# 同一規約（FW_ROOT 先頭→jq 配列順・各 repo は自身の凍結 baseline で jj diff --from）で連結してから hash。
+# 空判定は**連結後**に行う＝FW_ROOT 無変更でも sibling 変更があれば指紋が立ち stale clean を再 council
+# する（multi-repo の穴塞ぎ）。repos 未宣言なら従来と同一指紋（後方互換）。baseline 無し / 連結後 diff 空 /
 # VCS 不能なら空指紋 → 呼び出し側は「指紋未記録」と同じ後方互換 done に degrade（VCS 不能環境のみ）。
 fw_impl_fingerprint() {
-  local base d
-  base="$(fw_baseline_rev)"
+  local base d p b
+  base="$(fw_get '.baseline_rev')"   # 凍結 baseline（fw_goal_diff_lines と一致）。live @- だと mid-goal commit でゼロリセット
   [[ -n "$base" ]] || return 0
-  d="$( cd "$FW_ROOT" 2>/dev/null && { jj diff --from "$base" --git 2>/dev/null || git diff "$base" 2>/dev/null; } )" || true
+  d="$(fw_repo_git_diff "$FW_ROOT" "$base")"
+  # 宣言 sibling repo（state.repos）を同規約で連結（各 repo は自身の凍結 baseline）
+  while IFS=$'\t' read -r p b; do
+    [[ -z "$p" || -z "$b" ]] && continue
+    d+="$(fw_repo_git_diff "$(fw_repo_dir "$p")" "$b")"
+  done < <(jq -r '(.repos // [])[] | [.path, .baseline] | @tsv' "$FW_STATE" 2>/dev/null)
   [[ -n "$d" ]] && command -v sha256sum >/dev/null 2>&1 || return 0
   printf '%s' "$d" | sha256sum | awk '{print $1}'
 }

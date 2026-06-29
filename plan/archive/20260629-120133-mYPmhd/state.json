@@ -1,0 +1,73 @@
+{
+  "phase": "done",
+  "goal": "fw_impl_fingerprint に宣言 sibling repo（state.repos）を含め、FW_ROOT 無変更でも sibling 変更で指紋が立つようにする（multi-repo stale clean 穴塞ぎ）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/monitor-fingerprint.sh && bash test/multirepo-diff.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: hooks/lib/common.sh の fw_impl_fingerprint() のみ拡張 + test/monitor-fingerprint.sh に sibling 回帰1本追加。連結規約は fw_goal_diff_lines と同一（FW_ROOT diff 先頭→state.repos の jq 順、各 repo は自身の baseline で jj diff --from、fw_repo_dir で path 解決）。曖昧点の決定: 空判定は FW_ROOT+sibling を連結した後に行う（[[ -n $d ]] を連結後へ移す）＝FW_ROOT 無変更でも sibling 変更で指紋が立ち stale clean が再 council される。後方互換: repos 未宣言なら従来と同一指紋。VCS 不能 repo の baseline 空は diff 空扱いで無害。",
+  "baseline_rev": "1ac73a2bcd35e3a12b129f9b16000fbaf2babe98",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-06-29T11:40:28Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-06-29T11:41:32Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-06-29T11:41:51Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-06-29T11:47:42Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-29T11:47:44Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-06-29T11:47:52Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-29T11:59:01Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor cap 8 到達 — 人間介入が必要"
+    },
+    {
+      "ts": "2026-06-29T12:01:32Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-06-29T12:01:33Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/monitor-fingerprint.sh && bash test/multirepo-diff.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

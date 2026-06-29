@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.30 / MIT License
+v0.8.31 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.31
+- **指紋に宣言 sibling repo を含める（FR-50 follow-up / multi-repo stale clean 穴塞ぎ）** — FR-50 の `monitor=clean` 指紋（`fw_impl_fingerprint`）は **FW_ROOT の diff だけ**を hash しており、`flywheel repos` で宣言した sibling repo（`state.repos`）を見ていなかった（v1 既知限界）。結果、multi-repo goal で **FW_ROOT 無変更のまま sibling を変更**して停止すると、clean 記録後に sibling を直しても指紋一致と判定され **stale clean が done をすり抜けた**。`fw_goal_diff_lines`（diff 行数集約）は既に FW_ROOT + sibling を合算しているのに指紋だけ FW_ROOT 単独という非対称が穴の本体。指紋を diff 行数集約と**同一規約**（FW_ROOT 先頭→`state.repos` の jq 配列順・各 repo は自身の凍結 baseline で `jj diff --from`）に揃え、**空判定を連結後**に行うことで FW_ROOT 無変更でも sibling 変更で指紋が立ち再 council される。あわせて監視 council が**潜在バグを2件捕捉**: ①FW_ROOT base が live `fw_baseline_rev`（`@-`/HEAD）で、mid-goal commit で `diff --from HEAD` が空に潰れ指紋ゼロリセット→false re-council する非対称を、凍結 `state.baseline_rev` 読みに修正（FW_ROOT も sibling も凍結 baseline で対称）。②旧 C6 テストが seed 残骸で「FW_ROOT 無変更」を担保できておらず false-pass し得た点を pin。per-repo diff プリミティブ `fw_repo_git_diff` を抽出（FW_ROOT/sibling の取得を1箇所に統一）。**後方互換**: repos 未宣言なら従来と同一指紋。`test/monitor-fingerprint.sh`(C6 sibling 指紋・pre=空 pin / C7 sibling stale clean / C8 sibling 指紋安定性 / C9 mid-goal commit 安定) + `test/multirepo-diff.sh`。**flywheel の harness で dogfood**（add→grill→設計ゲート→eval→監視 council→done。council が本機能の潜在バグを捕捉＝真価）。
 
 ### 0.8.30
 - **monitor verdict 再利用（FR-50・改善C）** — 監視 council（3 observer fan-out）は done 前の最重量オペで 529 被弾源。grill で「verdict 再利用（無変更時）」を選択（gate を一切弱めない安全な軽量化）。`monitor=clean` を作業ツリーの**指紋（sha256 of baseline 累積 `jj diff --from`/`git diff`）に紐付け**、loop-driver の clean ゲートが**指紋一致時のみ done**（無変更＝「同じコード＝同じ結論」で再 council せず）。あわせて**現状の穴を塞ぐ**: clean 記録後にモデルがコードを変えても eval さえ緑なら done をすり抜けていた（monitor 再検証なし）→ 指紋不一致なら stale clean として再 council（fail-closed）。`.flywheel/`（gitignore）は diff に出ず state 変更で指紋が揺れない。**後方互換**: 指紋未記録の clean（旧 verdict / 指紋なしテスト）は従来どおり done。multi-repo の sibling 指紋は v1 非対象（既知の限界）。`fw_impl_fingerprint`(common.sh) + `monitor-set` の clean 指紋付与 + loop-driver clean ゲート。`test/monitor-fingerprint.sh`(C1 記録 / C2 一致→done / C3 不一致→再council / C4 後方互換)。出所: 本セッションの skill-usage 分析（改善C）。
