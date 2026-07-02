@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "スキルの自己進化。auto-memory と実行履歴から学びを抽出し、各スキルの Gotchas セクションに自動追記する。セッション終了前、定期的な改善サイクル、問題に遭遇した後に使う。「スキルを進化させて」「学びを反映して」「Gotchas を更新」「evolve」で発動。"
+description: "スキルの自己進化。auto-memory と実行履歴から学びを抽出し、学びを適用すべき actor（skill 本人 / fan-out agent）の Gotchas に自動追記する。セッション終了前、定期的な改善サイクル、問題に遭遇した後に使う。「スキルを進化させて」「学びを反映して」「Gotchas を更新」「evolve」で発動。"
 argument-hint: "[skill name or 'all']"
 allowed-tools: [Read, Edit, Glob, Grep, Bash]
 effort: medium
@@ -33,7 +33,7 @@ tail -n +2 "$FW_DATA/skill-usage.csv" | grep -v ',steer:' | tail -20 | awk -F, '
 
 ### Step 2: 既存 Gotchas との照合
 
-対象スキルの SKILL.md を Read し、Gotchas セクションを確認。
+対象スキルの SKILL.md（と、その skill が fan-out する agent の `agents/*.md` があればそれも）を Read し、既存 Gotchas を確認。
 
 - 既に記載されている内容と重複する学びは除外
 - 新しい学びのみを候補にする
@@ -95,9 +95,20 @@ echo "- [$(date -u +%F)] <改善案（1行）> (next: <promote / 試行 / 議論
 2. 「これは『そのうちやる』タスクとして backlog 管理すべきか？」→ YES なら improvement
 3. 両方該当する稀なケースは gotcha 優先（再発防止が即効性高い）+ improvements.md にも残す（着手判断のため）
 
+### Step 2.7: 書き込み先 routing（actor 判定）
+
+Gotcha の**主語（= この学びで動作を修正すべき actor）**が読むファイルに書く。skill を使った本人向けとは限らない:
+
+| 学びの主語 | 書き込み先 |
+|---|---|
+| skill を実行する本人（overseer / main loop） | その skill の SKILL.md |
+| skill から fan-out される agent（観測者・reviewer 等） | `agents/<name>.md`（agent 定義 = system prompt なので書けばそのまま届く） |
+
+リトマス試験: 本文の命令が「観測者は…」「reviewer は…」と fan-out agent に向いているのに skill 側に書くのは誤配送。fan-out prompt に SKILL.md の Gotchas は載らないため、actor に一生届かない（2026-07-02、monitor の観測者レンズ2件〈境界値 / baseline 凍結〉で実発生 → drift-observer.md へ移設）。
+
 ### Step 3: Gotchas 追記
 
-`<!-- AUTO-GOTCHAS -->` マーカーの後に追記する。マーカーがなければ Gotchas セクション末尾に追加する。
+Step 2.7 で決めた書き込み先ファイルの `<!-- AUTO-GOTCHAS -->` マーカーの後に追記する。マーカーがなければ末尾（SKILL.md は Gotchas セクション末尾）にマーカーごと追加する。
 
 #### フォーマット
 
@@ -110,9 +121,10 @@ echo "- [$(date -u +%F)] <改善案（1行）> (next: <promote / 試行 / 議論
 #### ルール
 
 - **追記のみ**。既存の Gotchas（マーカーより上）は絶対に編集しない
-- 1スキルあたり最大5件の AUTO-GOTCHAS を保持。超過時は古いものから削除
+- 1ファイルあたり最大5件の AUTO-GOTCHAS を保持。超過時は古いものから削除
 - 曖昧な学び（「うまくいかないことがある」等）は追記しない。具体的な状況 + 回避方法がセットで必要
-- SKILL.md の Gotchas セクション以外は一切触らない
+- 書き込み先ファイルの AUTO-GOTCHAS 配下以外は一切触らない（SKILL.md の手順部・agent .md のレンズ節/憲章は不可侵）
+- 定着した AUTO-GOTCHAS の恒久節への昇格（例: drift-observer の「レンズ別の着眼点」）は**人間が行う**。evolve は追記のみで昇格しない
 
 ### Step 4: 完了マーカー
 
@@ -144,7 +156,7 @@ mkdir -p .claude && touch .claude/evolve-done
 
 ## Gotchas
 
-- **手順部分を書き換えてしまう**: Gotchas セクション以外は絶対に Edit しない。`<!-- AUTO-GOTCHAS -->` マーカーを目印にする
+- **手順部分を書き換えてしまう**: 書き込み先の AUTO-GOTCHAS 配下以外は絶対に Edit しない。`<!-- AUTO-GOTCHAS -->` マーカーを目印にする
 - **曖昧な Gotchas を追記して価値が下がる**: 「状況 + 回避方法」のペアがないものは追記しない
 - **重複追記**: Step 2 の照合を必ず行い、既存と同じ内容は追記しない
 
