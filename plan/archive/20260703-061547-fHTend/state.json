@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "evolve actor-routing の機械検査化: skills/*/SKILL.md の AUTO-GOTCHAS 配下に fan-out agent 向け Gotcha（bullet title が「観測者は」等 actor 主語で始まる誤配送）が居たら fail する恒久ガード test を test/ に1本追加",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: test/ のみ（+README/ROADMAP 追記）。検出は実例 class に絞る: skills/*/SKILL.md・AUTO-GOTCHAS マーカー以下・bullet title 主語「観測者は」のみ fail（本文中の言及は不問＝monitor 手動 Gotchas や既存 AUTO 項の false positive を出さない）。fan-out agent が増えたらキーワードを足す運用。前例: test/intent-router-removed.sh（恒久ガード）。逆方向（agents/*.md への overseer 向け混入検査）は実例無しで非スコープ。runner は test/run-all.sh が自動で拾う",
+  "baseline_rev": "6e905490d8578e6246d7a894a477102863667a34",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-03T05:56:45Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-03T05:58:55Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-03T06:00:34Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-03T06:04:05Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T06:04:16Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-03T06:15:36Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T06:15:47Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}
