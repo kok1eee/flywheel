@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.33 / MIT License
+v0.8.34 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.34
+- **2.1.198/199 対応（FR-53・council 同期化 + hooks 配線ガード）** — Claude Code 2.1.198 で subagent が**背景実行デフォルト**になり、「fan-out→集約→記録を同一ターンで」という monitor council の核前提が sync 明示なしに成立しなくなった。実踏（FR-52 council）: fork した monitor が観測者を背景 spawn →「完了を待つ」とターン終了 → fork は非永続で待つ主体が消え、完了通知が親セッションに漂着して集約・monitor-set が実行されない＝**Gotcha 113（fork 空振り）の構造的な新 root cause**。対応: monitor Step 2 に観測者の `run_in_background: false`（同期）を明記（同一メッセージ並列呼び出しで並行性は不変）、Gotcha 113 に root cause 追記、「遅延漂着した council レポートは clean 後のツリーに触らず improvements.md へ」（FR-50 指紋の無効化防止）を Gotchas 化。あわせて 2.1.191 のカンマ matcher silent 失敗が示した「気づけない配線破れ」class に `test/hooks-wiring.sh` を追加: hooks.json の valid JSON / 全参照 script 実在 / カンマ matcher 禁止 / monitor sync 指示の消失検知を CI で assert（design-gate は配線が破れると **fail-open** で無音消失するため。positive control 実走込み・FR-51 と同型）。state machine 層は無変更 — 背景化の世界でも「記録された state だけを信じる」sensors-first 設計は fail-closed のまま機能する（今回の空振りも monitor=pending が done を塞いで検知された）。stacked slash-skill の干渉は ROADMAP watch 行のみ。
 
 ### 0.8.33
 - **lens 効果計測（FR-52）** — 監視 council のレンズと AUTO-GOTCHAS のレンズ項は育つ一方で、**どのレンズが採用 drift を出したかがどこにも記録されず**、cap 5 の追い出しと「レンズ別の着眼点」昇格（人間の判断）が勘だった（skill 使用は skill-usage.csv で計測済みなのに council の効果だけ無計測という非対称）。`flywheel monitor-set` に optional `--lens <カンマ列>`（任意位置・arg-scan で後方互換）を追加し、verdict 記録と同時に `fw_log_monitor_verdict`（common.sh）が `monitor-verdicts.csv`（fw_data_dir・`timestamp,verdict,level,lenses`）へ 1 行追記。**clean も記録して分母**（council 実行回数）にし、pending は非記録（fuse の priming は council の verdict でない＝分母を汚さない）。lenses はカンマ列入力をパイプ連結に正規化して 4 列固定。**observation-only**: CSV 書き込み失敗でも verdict 記録は成功（`test/monitor-lens-csv.sh` C4 で read-only データ領域を実証）。「drift には --lens・clean には無し」の契約は stderr 警告で機械観測（忘れ / 余計の両方向・exit 0 のまま。C5/C6）。書き手は CLI＝C-2 整合（モデルは CSV を直接書かない）。overseer への渡し方（drift のとき採用 reviewer を添える）は monitor SKILL.md Step 4 に追記。FR-51 council Note を同乗消化: positive control に「reviewer は」fixture を追加して SUBJECTS 2 語目を実演習・docs の 1 語 lag 修正。出所: loop engineering 談義（学習 loop の「効いたか」観測を閉じる）・FR-51 の続き。

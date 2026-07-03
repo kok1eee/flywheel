@@ -1,0 +1,73 @@
+{
+  "phase": "done",
+  "goal": "2.1.198/199 対応: monitor council の観測者 spawn を同期に明記 + fork 空振りの新 root cause と遅延漂着規律を Gotchas 化 + hooks.json 配線ガード test 追加（silent 失敗 class の CI 観測）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: skills/monitor/SKILL.md（Step 2 に観測者の run_in_background:false 明記 + Gotchas 更新）/ test/hooks-wiring.sh 新規 / ROADMAP（FR-53 行 + stacked-skill 干渉の watch note）/ README Changelog / version bump v0.8.34（plugin.json/marketplace.json）。会話で確定した内容: (1) 2.1.198 の subagent 背景化で fork 経由 council が構造的に空振りする（fork が spawn→ターン終了→完了通知が親に漂着し集約・monitor-set が実行されない。2026-07-03 実踏）→ 観測者 spawn は sync 指定が正。Gotcha 113 に root cause 追記（AUTO 項の手動更新は人間裁量で可）。(2) 遅延漂着した council レポートは clean 記録後のツリーに触らず improvements.md へ（FR-50 指紋の無効化防止。同日実踏）→ overseer 向けなので monitor SKILL.md の Gotchas へ。(3) hooks.json 配線ガード test: JSON valid・参照 script 実在・matcher にカンマ無し（2.1.191 のカンマ matcher silent 失敗 class。flywheel は現状 pipe のみ＝未踏だが design-gate は fail-open なので配線破れの機械観測に価値）。exec bit は bash 起動のため assert しない。(4) stacked slash-skill（最大5同時ロード）のスキル間干渉は watch note のみ・実装なし",
+  "baseline_rev": "dd1f637ce0fececcc787b93d3f095dc6f6acf549",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-03T06:53:50Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-03T06:54:48Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-03T06:56:27Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-03T06:58:39Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T06:58:49Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-03T07:11:18Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T07:11:28Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor drift (impl) → 差し戻し"
+    },
+    {
+      "ts": "2026-07-03T07:11:41Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T07:18:19Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}
