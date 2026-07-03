@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.35 / MIT License
+v0.8.36 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.36
+- **fan-out skill の背景デフォルト棚卸し（FR-55）** — 2.1.198 の subagent 背景デフォルト化対応を monitor（FR-53）以外の fan-out 面へ展開。判定基準を明文化: **binding**（結果を同一ターン/フローで集約して判定・成果物に使う）は `run_in_background: false` を明記、**advisory**（後続の停止で拾うだけ）は背景可。棚卸し結果、binding は 4 面 — monitor 観測者（FR-53 済）/ **discovery-council メンバー 3 体**（SendMessage 相互検証→集約→曖昧点確認が同一フロー。SKILL.md に方針 + reference.md の 3 テンプレに明記）/ **design の designer**（design.md 生成を待って validate）/ **verification の証拠収集子**（親が同一ターンで照合判定）。advisory な fan-out は現 skill に無し（将来の継続監視等はこちら）。`test/hooks-wiring.sh` の sync ガードを 3 ファイルへ拡張（存在 assert・テンプレ数の増減で brittle にしない）。**同乗**: monitor-lens-csv テスト網強化 3 点（FR-52 council low note 消化）— C1b timestamp の ISO8601 形式 assert / C7 sanitize（引用符除去・カンマ→パイプ）経路の実走 / C8 既存 CSV への append 失敗（read-only ファイル）でも verdict 成功。出所: improvements.md 2026-07-03。
 
 ### 0.8.35
 - **hook 発火の live positive control（FR-54・heartbeat + greeter warn）** — FR-53 の hooks-wiring ガードは repo 側の配線破れしか観測できず、**host 側の hook 意味論変更による fail-open**（2.1.191 のカンマ matcher バグ型＝特定 hook だけ無音死し設計ゲートが蒸発する**部分死**）が residual だった。design-gate が `fw_hook_guard` 通過直後に `fw_data_dir` へ heartbeat を **touch**（mtime 方式・Edit/Write 毎に発火する高頻度 hook なので追記 CSV でなくサイズ無成長。block 判定と独立＝block 経路でも痕跡が残る）。greeter の `fw_heartbeat_staleness` が **implementing/eval/polish で痕跡欠如 or 7 日停滞**（`HEARTBEAT_STALE_DAYS` 可変）を warn — implementing 到達は design-gate の fw_advance 経由でしか起きないため、この phase での痕跡欠如は「発火したはずなのに無い」＝部分死の兆候。**守備範囲は部分死のみ**（全 hook 死は greeter ごと死ぬため原理的に検知不能＝ユーザーが完全沈黙で気づく領域、と明記）。全て observation-only（touch/判定失敗でも門と greeter は不変・`test/heartbeat.sh` C4 で read-only 実証）。あわせて loop-driver の指紋不一致 steer に「変更が遅延 council レポートの消化なら revert + improvements.md 退避」の 1 節を追記（FR-53 altitude 指摘の消化・違反検知の瞬間の live steer が remediation を運ぶ）。`test/heartbeat.sh`(C1-C5)。出所: FR-53 residual + improvements.md。

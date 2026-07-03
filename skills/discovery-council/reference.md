@@ -13,6 +13,7 @@ Agent:
   subagent_type: "flywheel:researcher"
   name: "researcher"
   team_name: "discovery"
+  run_in_background: false   # binding fan-out（同一フロー集約・詳細は SKILL.md Step 2）
   description: "Discovery Council: 技術調査"
   prompt: |
     ## エージェント定義
@@ -49,6 +50,7 @@ Agent:
   subagent_type: "flywheel:analyst"
   name: "analyst"
   team_name: "discovery"
+  run_in_background: false   # binding fan-out（同一フロー集約・詳細は SKILL.md Step 2）
   description: "Discovery Council: 要件分析"
   prompt: |
     ## エージェント定義
@@ -87,6 +89,7 @@ Agent:
   subagent_type: "flywheel:scout"
   name: "scout"
   team_name: "discovery"
+  run_in_background: false   # binding fan-out（同一フロー集約・詳細は SKILL.md Step 2）
   description: "Discovery Council: ギャップ分析"
   prompt: |
     ## エージェント定義

@@ -20,6 +20,7 @@ plan/requirements.md が存在すること。なければ「先に /discovery-co
 Agent:
   subagent_type: "flywheel:designer"
   name: "designer"
+  run_in_background: false   # binding fan-out: design.md の生成を待って validate へ進む（基準は ROADMAP 機構メモ）
   description: "アーキテクチャ設計"
   prompt: |
     ## エージェント定義

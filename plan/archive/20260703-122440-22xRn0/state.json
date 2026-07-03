@@ -1,0 +1,73 @@
+{
+  "phase": "done",
+  "goal": "fan-out skill の背景デフォルト棚卸し: binding な fan-out に sync 明記・advisory は背景可を明文化（2.1.198 対応の monitor 以外への展開）+ monitor-lens-csv テスト網強化3点の同乗",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: skills/*/SKILL.md（fan-out 指示を持つ skill の sync/背景の明記）+ test/monitor-lens-csv.sh（強化3点の同乗）+ README/ROADMAP + version v0.8.36（2箇所）。仮決め（design で覆してよい）: (1) 棚卸しの対象は skills/ 配下で Agent fan-out を指示する全 skill（候補: discovery-council の3並列・critic・grill の並列調査等。事実は design 時に grep で確定）。判定基準は「同一ターンで集約して判定に使う（binding）なら run_in_background:false を明記・調査結果を後で拾うだけ（advisory）なら背景のままで良い旨を明記」。(2) hooks-wiring.sh の sync ガードを他 skill にも広げるかは design で判断（anchor の一意性維持が条件）。(3) 同乗: monitor-lens-csv テスト網強化3点＝timestamp 形式 assert / sanitize（引用符・カンマ→パイプ）経路の演習 / 既存 CSV への append 失敗経路の演習（FR-52 council low note）。出所: improvements.md 2026-07-03 の2件（fan-out 棚卸し + テスト強化）",
+  "baseline_rev": "9321e9a4753195a37ca63c2957ef3a1a04148b88",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-03T08:45:38Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-03T11:53:35Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-03T11:54:34Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-03T11:55:52Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T11:56:02Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-03T12:13:12Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T12:13:23Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor drift (impl) → 差し戻し"
+    },
+    {
+      "ts": "2026-07-03T12:13:30Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T12:24:40Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

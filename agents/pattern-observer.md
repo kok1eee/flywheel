@@ -5,7 +5,6 @@ tools: Read, Glob, Grep, WebSearch, WebFetch
 model: sonnet
 memory: project
 permissionMode: plan
-background: true
 disallowedTools: [Write, Edit, Bash]
 ---
 

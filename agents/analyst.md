@@ -88,6 +88,7 @@ disallowedTools: [Bash]
 | ファイル列挙・出現数カウント等の機械的 sweep | 汎用 | `haiku` |
 
 原則（詳細は `agents/capabilities.md` の「モデル選択」参照）:
+- 子は **`run_in_background: false`（同期）**で spawn する（親が同一ターンで結論を集約する binding fan-out。基準は ROADMAP 機構メモ・FR-55）
 - 子の prompt に**出力契約**（何を・どの形式で返したら完了か）を必ず書く
 - 列挙系だけ `model: haiku` に降格。解釈系（なぜこう設計されているか・隠れた制約）は指定を省略して自分と同じモデルで
 - 子の報告が期待と食い違う・薄すぎるときは、同じ調査をモデル指定なし（継承）で撃ち直す

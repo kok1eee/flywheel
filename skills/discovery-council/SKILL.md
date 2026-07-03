@@ -48,7 +48,11 @@ TeamCreate:
 
 Council プロトコル: 独立に分析 → SendMessage で相互共有 → 相互検証 → analyst が最終統合
 
-メンバーは広い調査 sweep を nested sub-agent（code-explorer / architecture-mapper / convention-scout 等）に委譲できる（FR-26。各 agent 定義の「調査の委譲」参照）。列挙系の子は `model: haiku`、解釈系は指定省略（継承）。メンバー自身は `model: inherit` で main loop のモデルを継承する。
+メンバー 3 体は **`run_in_background: false`（同期）で spawn** する（binding fan-out＝同一フローで
+集約して requirements.md を確定するため。同一メッセージ内の並列呼び出しで並行性は不変。
+binding/advisory の判定基準は ROADMAP「機構メモ」が正）。
+
+メンバーは広い調査 sweep を nested sub-agent（code-explorer / architecture-mapper / convention-scout 等）に委譲できる（FR-26。各 agent 定義の「調査の委譲」参照）。nested の子も binding（メンバーが同一ターンで結論を集約する）なので `run_in_background: false` で spawn する。列挙系の子は `model: haiku`、解釈系は指定省略（継承）。メンバー自身は `model: inherit` で main loop のモデルを継承する。
 
 ## Step 3: 曖昧点の確認（スキップ禁止）
 
@@ -74,7 +78,7 @@ TeamDelete
 
 ## Gotchas
 
-- **researcher が外部検索に時間を使いすぎて analyst が待ちぼうけ**: researcher は `background: true` で非同期。analyst と scout は researcher を待たずに独立して分析を開始すべき
+- **researcher の外部検索待ちで council が停滞**: 3 体は同一メッセージ内で並列に sync spawn される（FR-55）ので analyst/scout が researcher を「待つ」ことはないが、researcher 自身が外部検索を掘りすぎると集約が遅れる。researcher の調査は要点に絞らせる（旧記述の `background: true` 非同期運用は 2.1.198 の背景デフォルト化で廃止＝binding fan-out は sync が正）
 - **scout が曖昧点を発見しても analyst に伝わらない**: SendMessage の recipient 名を正確に。name が間違っていると silent loss する
 - **要件が広すぎてスコープ爆発**: scout が IN/OUT SCOPE を明確にしないまま analyst が全部盛りの requirements.md を書く。scout の分析を待ってから最終化する
 - **既存プロジェクトの文脈を無視**: 動的注入でプロジェクト構造は把握済みだが、CLAUDE.md の開発ガイドラインも必ず確認する

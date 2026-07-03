@@ -5,7 +5,6 @@ tools: Read, Glob, Grep, WebSearch, WebFetch, Agent
 model: inherit
 memory: project
 permissionMode: plan
-background: true
 disallowedTools: [Write, Edit, Bash]
 ---
 
@@ -45,6 +44,7 @@ disallowedTools: [Write, Edit, Bash]
 
 - 類似機能トレース → `flywheel:code-explorer`（モデル指定省略 = 継承）/ 構造把握 → `flywheel:architecture-mapper`（省略）/ 規約抽出 → `flywheel:convention-scout`（`haiku`）/ 機械的な列挙 → 汎用の子に `haiku`
 - 子の prompt には出力契約（何を返したら完了か）を明記。報告が薄ければ継承モデルで撃ち直す
+- 子は **`run_in_background: false`（同期）**で spawn する（親が同一ターンで結論を集約する binding fan-out。基準は ROADMAP 機構メモ・FR-55）
 - 数ファイルで済む調査は自分で読む。詳細は `agents/capabilities.md` の「モデル選択」参照
 
 ## 調査プロセス

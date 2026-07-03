@@ -81,3 +81,22 @@ n_sync="$(grep -c 'subagent_type: "flywheel:drift-observer".*run_in_background: 
 [ "${n_sync:-0}" -eq 1 ] \
   || fail "monitor SKILL.md の spawn 指示 anchor が一意でない（${n_sync:-0} 行）: 0=指示消失（2.1.198+ で council が構造的に空振り）/ 2+=完全引用の混入で消失検知が無効化される"
 ok "monitor SKILL.md の観測者 sync spawn 指示が存在（spawn 行 anchor・一意）"
+
+# FR-55 council: agents/ に旧 opt-in 背景 frontmatter が再混入しないこと（binding 用途と矛盾する 2.1.196 以前の遺物）
+! grep -rq '^background: true' "$ROOT/agents/" \
+  || fail "agents/*.md に background: true が再混入: $(grep -rln '^background: true' "$ROOT/agents/" | tr '\n' ' ')"
+ok "agents/ に background: true の残骸なし"
+
+# FR-55: 他の binding fan-out 面にも sync 指示の存在を assert（≥1）
+for f in "skills/design/SKILL.md" "skills/verification/SKILL.md" "agents/researcher.md" "agents/analyst.md" "agents/scout.md"; do
+  grep -q 'run_in_background: false' "$ROOT/$f" \
+    || fail "$f から binding fan-out の sync 指示（run_in_background: false）が消えた（2.1.198+ で集約が空振りする）"
+done
+# reference.md はテンプレ複数のため「全テンプレに sync がある」を self-adjusting に assert
+# （sync 数 == subagent_type 数。テンプレ追加には自動追従し、一部テンプレだけの無音消失を検知）
+REF="$ROOT/skills/discovery-council/reference.md"
+n_tpl="$(grep -c 'subagent_type:' "$REF")" || true
+n_syn="$(grep -c 'run_in_background: false' "$REF")" || true
+[ "${n_tpl:-0}" -ge 1 ] && [ "${n_syn:-0}" -eq "${n_tpl:-0}" ] \
+  || fail "discovery-council/reference.md の sync 指示がテンプレ数と不一致（templates=$n_tpl sync=$n_syn）: 一部テンプレから消えても他が残ると ≥1 assert では素通りする"
+ok "binding fan-out 3 面（discovery-council 全テンプレ / design / verification）の sync 指示が存在"

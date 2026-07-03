@@ -5,7 +5,6 @@ tools: Read, Glob, Grep
 model: inherit
 memory: project
 permissionMode: plan
-background: true
 disallowedTools: [Write, Edit, Bash, WebSearch, WebFetch]
 ---
 
