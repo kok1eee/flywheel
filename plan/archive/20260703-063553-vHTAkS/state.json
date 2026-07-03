@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "lens 効果計測: flywheel monitor-set に --lens <カンマ列> を追加し、council 1回ごとに timestamp,verdict,level,lenses を fw_data_dir の CSV に1行記録する（AUTO-GOTCHAS の cap 追い出し・「レンズ別の着眼点」昇格をデータ駆動にする）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: bin/flywheel（monitor-set）+ skills/monitor/SKILL.md（Step 4 で --lens を渡す指示）+ test/ 新規1本 + README/ROADMAP + version bump（plugin.json/marketplace.json の2箇所）。仮決めした設計判断（ユーザー AFK につき推奨案で進行・design で覆してよい）: (1) 記録粒度は lens 単位のみ。Gotcha 単位の attribution は観測者に引用 id を出させる機構が必要で非スコープ。(2) council 1回=1行（clean も記録して分母にする。lenses は採用 drift を出した reviewer のカンマ列・clean/pending は空）。(3) CSV 書き込みは fw_log_usage と同じ observation-only（append 失敗でも verdict 記録は成功させる）。CSV 名・ヘッダは design で決定（skill-usage.csv と同じ fw_data_dir に置く）",
+  "baseline_rev": "7f4a389431571d4d6c2e3cdcf828e51edc6d8e14",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-03T06:15:47Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-03T06:17:47Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-03T06:19:22Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-03T06:21:29Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T06:21:39Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-03T06:35:43Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T06:35:53Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

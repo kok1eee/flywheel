@@ -92,10 +92,14 @@ drift が無ければ findings:[] と summary に「drift なし」。
 
 ```
 flywheel monitor-set clean
-# または
-flywheel monitor-set drift implementing "<reason>"
-flywheel monitor-set drift design "<reason>"
+# または（--lens は採用 drift を出した reviewer のカンマ列。レンズ効果計測 FR-52）
+flywheel monitor-set drift implementing "<reason>" --lens observer-behavior,observer-requirement
+flywheel monitor-set drift design "<reason>" --lens observer-requirement
 ```
+
+drift のときは **採用 drift を出した reviewer** を `--lens` で添える（どのレンズが効いたかの計測。
+clean は採用 drift ゼロなので不要）。記録は `monitor-verdicts.csv`（fw_data_dir）に溜まり、
+AUTO-GOTCHAS の追い出し・「レンズ別の着眼点」昇格の判断材料になる。
 
 記録すると、次の停止で loop-driver が読み、clean→done / drift implementing→差し戻し / drift design|requirements→人間 hand-back を執行する。**verdict を記録するまで done は通らない。**
 

@@ -30,7 +30,7 @@ Usage:
   flywheel next              dormant/done のとき backlog 先頭を pop して start
   flywheel _advance <to> <by>  phase 遷移（hook 内部用。FLYWHEEL_HOOK=1 必須・手動使用は拒否される）
   flywheel watch-focus "<text>"   監視 council の重点を指定（FR-30 HITL）。overseer が観測者に渡す
-  flywheel monitor-set <clean|drift|pending> [level] [reason]
+  flywheel monitor-set <clean|drift|pending> [level] [reason] [--lens <a,b>]
         監視 council（Skill: flywheel:monitor）が verdict を記録する入口（FR-30）。
         drift のとき level = implementing|design|requirements を付ける（design/requirements は人間 hand-back）
   flywheel set-eval "<cmd>"
@@ -182,7 +182,16 @@ case "$cmd" in
     # FR-30: 監視 council（Skill: flywheel:monitor）が verdict を記録する入口。
     # status: clean | drift | pending。drift のとき level（implementing/design/requirements）と reason を付ける。
     # 執行（done ブロック / 差し戻し / hand-back）は loop-driver が monitor を読んで行う。
-    [[ $# -lt 1 ]] && { echo "flywheel monitor-set <clean|drift|pending> [level] [reason]" >&2; exit 1; }
+    # FR-52: --lens <カンマ列>（任意位置）を先に抜く。残 positional は従来どおり <status> [level] [reason]。
+    _lens=""; _pos=()
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --lens) _lens="${2:-}"; shift 2 || shift ;;
+        *) _pos+=("$1"); shift ;;
+      esac
+    done
+    set -- ${_pos[@]+"${_pos[@]}"}
+    [[ $# -lt 1 ]] && { echo "flywheel monitor-set <clean|drift|pending> [level] [reason] [--lens <a,b>]" >&2; exit 1; }
     fw_state_exists || { echo "flywheel monitor-set: state がありません（先に start）" >&2; exit 1; }
     _ms="$1"; _ml="${2:-}"; _mr="${3:-}"
     # enum 検証（typo verdict で done-gate をすり抜けさせない。loop-driver も未知 status は fail-closed）。
@@ -194,7 +203,15 @@ case "$cmd" in
     _mfp=""; [[ "$_ms" == "clean" ]] && _mfp="$(fw_impl_fingerprint || true)"   # || true: no-VCS で verdict 記録前に set -e 中断しない
     fw_set_json monitor "$(jq -cn --arg s "$_ms" --arg l "$_ml" --arg r "$_mr" --arg fp "$_mfp" \
       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{status:$s, level:$l, reason:$r, fingerprint:$fp, ts:$ts}')"
-    echo "🔎 flywheel monitor: status=$_ms${_ml:+ level=$_ml}${_mr:+ reason=$_mr}"
+    # FR-52: レンズ効果計測。pending は council の verdict でない（fuse の priming 等）ため非記録＝分母を汚さない。
+    # drift + lens 空は警告（exit 0 のまま）: 「--lens を渡す」契約は SKILL.md の散文にしか無く、忘れは
+    # 「正当に空の clean」と区別できないままデータに沈む（FR-51 と同じ prompt-level 契約の機械観測）。
+    if [[ "$_ms" != "pending" ]]; then
+      [[ "$_ms" == "drift" && -z "$_lens" ]] && echo "⚠️ flywheel monitor-set: drift に --lens が空です（採用 drift を出した reviewer を添えるとレンズ効果計測が効く・FR-52）" >&2
+      [[ "$_ms" == "clean" && -n "$_lens" ]] && echo "⚠️ flywheel monitor-set: clean に --lens は不要です（採用 drift ゼロ＝lens 空が正・FR-52）" >&2
+      fw_log_monitor_verdict "$_ms" "$_ml" "$_lens"
+    fi
+    echo "🔎 flywheel monitor: status=$_ms${_ml:+ level=$_ml}${_mr:+ reason=$_mr}${_lens:+ lens=$_lens}"
     ;;
   set-eval)
     # gap B: eval_cmd は spec-ready 以降 immutable で、誤った done 判定を飛行中に直せなかった。

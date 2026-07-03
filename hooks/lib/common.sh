@@ -374,14 +374,26 @@ fw_data_dir() {
   printf '%s\n' "${d:-$HOME/.claude/flywheel-data}"
 }
 
-# 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、失敗しても本処理を妨げない。
-fw_log_usage() {
+# 計測 CSV への observation-only 追記の共通部（FR-18/52。$1=basename $2=header $3=timestamp より後ろの row）。
+# degrade 方針（mkdir/ヘッダ/append のどこで失敗しても本処理を妨げない）と timestamp 形式をここに集約。
+_fw_log_csv() {
   local d csv
   d="$(fw_data_dir)"
   mkdir -p "$d" 2>/dev/null || return 0
-  csv="$d/skill-usage.csv"
-  [[ -f "$csv" ]] || echo "timestamp,skill" > "$csv" 2>/dev/null || return 0
-  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),$1" >> "$csv" 2>/dev/null || true
+  csv="$d/$1"
+  [[ -f "$csv" ]] || echo "$2" > "$csv" 2>/dev/null || return 0
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ),$3" >> "$csv" 2>/dev/null || true
+}
+
+# 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、失敗しても本処理を妨げない。
+fw_log_usage() { _fw_log_csv skill-usage.csv "timestamp,skill" "$1"; }
+
+# 計測（FR-52）: 監視 council の verdict を monitor-verdicts.csv に1行追記する（$1=status $2=level
+# $3=lenses カンマ列）。clean も記録して分母（council 実行回数）にする。lenses は入力カンマ列を
+# `|` 連結に正規化して CSV 4列を固定。読み手は人間（AUTO-GOTCHAS 追い出し・着眼点昇格の判断材料）。
+fw_log_monitor_verdict() {
+  local lenses; lenses="$(printf '%s' "${3:-}" | tr -d '"\n' | tr ',' '|')"
+  _fw_log_csv monitor-verdicts.csv "timestamp,verdict,level,lenses" "$1,${2:-},$lenses"
 }
 
 # 改善A: evolve（自己改善 skill）の停滞度を判定し、停滞時のみリマインダ1行を echo する。

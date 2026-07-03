@@ -37,12 +37,14 @@ cat > "$T/hit/monitor/SKILL.md" <<'EOF'
 
 <!-- AUTO-GOTCHAS -->
 - **[2026-07-01] 観測者は境界値を必ず突く**: 誤配送の再現（fan-out agent 向け title が skill 側に居る）。
+- **[2026-07-02] reviewer は根拠の引用を必ず確認する**: SUBJECTS 2語目（reviewer は）の実演習。
 EOF
 if out="$(check_skills_dir "$T/hit")"; then
   fail "positive control: 誤配送 fixture を検出できていない（lint が一度も fire しない）"
 fi
 [[ "$out" == *"SKILL.md:4:"* ]] || fail "positive control: 検出出力に file:line が無い: $out"
-ok "positive control: 誤配送 Gotcha を検出して非ゼロ + file:line 出力"
+[[ "$out" == *"SKILL.md:5:"* ]] || fail "positive control: SUBJECTS 2語目（reviewer は）を検出していない: $out"
+ok "positive control: 誤配送 Gotcha を検出して非ゼロ + file:line 出力（両 subject）"
 
 # --- 2) false positive ガード: マーカーより上の同文・本文中の言及は検出しないこと ---
 cat > "$T/clean/monitor/SKILL.md" <<'EOF'
