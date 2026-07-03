@@ -396,6 +396,39 @@ fw_log_monitor_verdict() {
   _fw_log_csv monitor-verdicts.csv "timestamp,verdict,level,lenses" "$1,${2:-},$lenses"
 }
 
+# 計測（FR-54）: hook 発火の痕跡を mtime で残す（live positive control）。design-gate は Edit/Write 毎に
+# 発火する高頻度 hook なので追記 CSV でなく touch（サイズ無成長）。失敗しても本処理（門）を妨げない。
+fw_touch_heartbeat() {
+  local d; d="$(fw_data_dir)"
+  mkdir -p "$d" 2>/dev/null || return 0
+  touch "$d/heartbeat-$1" 2>/dev/null || true
+  return 0
+}
+
+# 改善（FR-54）: design-gate の発火痕跡を検査し、欠如/停滞時のみ warn 1行を echo する。
+# implementing 到達は design-gate の fw_advance 経由でしか起きない＝implementing/eval/polish で
+# 痕跡が無いのは「発火したはずなのに痕跡が無い」＝hook の部分死（2.1.191 class）の兆候。
+# 全 hook 死は greeter ごと死ぬため検知不能（v1 の守備範囲は部分死のみ）。
+# greeter（set -euo pipefail）から呼ばれるため、何が失敗しても greeter を壊さず常に return 0。
+fw_heartbeat_staleness() {
+  local hb phase mt now days stale_days="${HEARTBEAT_STALE_DAYS:-7}"
+  fw_state_exists || return 0
+  phase="$(fw_phase 2>/dev/null || true)"
+  case "$phase" in implementing|eval|polish) ;; *) return 0 ;; esac
+  hb="$(fw_data_dir)/heartbeat-design-gate"
+  if [[ ! -f "$hb" ]]; then
+    echo "⚠️ design-gate の発火痕跡がありません（設計ゲートが host 側で無音死している可能性）。bash test/hooks-wiring.sh で repo 側配線を確認し、直近の Claude Code 更新を疑ってください"
+    return 0
+  fi
+  mt="$(stat -c %Y "$hb" 2>/dev/null || echo 0)"
+  now="$(date -u +%s)"
+  days=$(( mt > 0 ? (now - mt) / 86400 : 9999 ))
+  if (( days >= stale_days )); then
+    echo "⚠️ design-gate の発火痕跡が ${days} 日前で止まっています（部分死の可能性）。bash test/hooks-wiring.sh で repo 側配線を確認し、直近の Claude Code 更新を疑ってください"
+  fi
+  return 0
+}
+
 # 改善A: evolve（自己改善 skill）の停滞度を判定し、停滞時のみリマインダ1行を echo する。
 # skill-usage.csv の最終 evolve からの経過日数 / その後の未消化 goal 数で判定。非停滞・データ無しは無音。
 # greeter（SessionStart・set -euo pipefail）から呼ばれるため、何が失敗しても greeter を壊さず常に return 0。

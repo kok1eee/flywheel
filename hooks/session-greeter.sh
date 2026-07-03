@@ -24,6 +24,8 @@ emit() {  # $1 = additionalContext
 
 # 改善A: evolve 停滞リマインダ（停滞時のみ非空・失敗しても greeter を止めない）
 evolve_line="$(fw_evolve_staleness || true)"
+# FR-54: design-gate 発火痕跡の欠如/停滞 warn（hook 部分死の検知・非該当は無音・失敗しても止めない）
+heartbeat_line="$(fw_heartbeat_staleness || true)"
 
 # --- active: 再アンカー ---
 if fw_state_exists; then
@@ -43,7 +45,8 @@ if fw_state_exists; then
   esac
   emit "🛞 flywheel 稼働中: phase=$phase
   goal: $(fw_get '.goal')
-$next
+$next${heartbeat_line:+
+  $heartbeat_line}
   状態: $FW_CLI status / 中止: $FW_CLI reset / bypass: FLYWHEEL_OFF=1"
 fi
 

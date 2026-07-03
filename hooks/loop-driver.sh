@@ -211,7 +211,7 @@ EOF
       # cap 執行は次停止の pending 枝（mstatus==pending）に委ねる＝再 prime+escalate を二重に書かない。
       fw_set_json monitor '{"status":"pending"}'
       fw_log_usage "steer:monitor"
-      echo "🔎 flywheel: clean 記録後にコードが変わりました（指紋不一致）。未検証の変更を Skill: flywheel:monitor で再検証してください（古い clean で done をすり抜けさせません）。" >&2
+      echo "🔎 flywheel: clean 記録後にコードが変わりました（指紋不一致）。未検証の変更を Skill: flywheel:monitor で再検証してください（古い clean で done をすり抜けさせません）。変更が遅延到着した council レポートの消化なら、revert して指摘を improvements.md へ退避する選択肢もあります（monitor SKILL.md の Gotcha 参照）。" >&2
       exit 2
     fi
   else

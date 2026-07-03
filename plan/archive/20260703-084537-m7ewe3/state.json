@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "hook 発火の live positive control: design-gate が発火毎に heartbeat を touch し、greeter が「active なのに痕跡なし」を warn（host 側 fail-open の無音化対策）+ loop-driver 指紋不一致 steer に遅延レポート対応の1節",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: hooks/design-gate.sh（発火時に heartbeat）+ hooks/session-greeter.sh（痕跡ゼロ warn）+ hooks/lib/common.sh（ヘルパ）+ hooks/loop-driver.sh（指紋不一致 steer に1節）+ test/ 新規1本 + README/ROADMAP + version v0.8.35（2箇所）。仮決め（AFK につき推奨案・design で覆してよい）: (1) heartbeat は追記 CSV でなく touch ファイル（design-gate は Edit/Write 毎に発火し高頻度→サイズ無成長の mtime 方式。fw_data_dir に置きリポ外＝指紋非影響）。対象は fail-open な design-gate のみ（loop-driver は死ねば done が止まる＝自己顕在）。(2) greeter の warn 条件は「state が active（implementing 以降の履歴あり）なのに heartbeat 痕跡が無い/古い」。observation-only で greeter を壊さない（fw_evolve_staleness と同型）。(3) loop-driver の指紋不一致 steer に「clean 後の編集が遅延 council レポート対応なら revert して improvements.md へ退避」を1節追記（FR-53 altitude 指摘の消化）。出所: FR-53 residual（host 側 fail-open の live positive control）+ improvements.md 2026-07-03",
+  "baseline_rev": "77d7e859f4ccd619e96e58fa764034a6b3144a1d",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-03T07:27:01Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-03T07:29:00Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-03T07:29:28Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-03T07:31:50Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T07:32:02Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-03T08:37:25Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-03T08:45:37Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

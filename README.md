@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.34 / MIT License
+v0.8.35 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.35
+- **hook 発火の live positive control（FR-54・heartbeat + greeter warn）** — FR-53 の hooks-wiring ガードは repo 側の配線破れしか観測できず、**host 側の hook 意味論変更による fail-open**（2.1.191 のカンマ matcher バグ型＝特定 hook だけ無音死し設計ゲートが蒸発する**部分死**）が residual だった。design-gate が `fw_hook_guard` 通過直後に `fw_data_dir` へ heartbeat を **touch**（mtime 方式・Edit/Write 毎に発火する高頻度 hook なので追記 CSV でなくサイズ無成長。block 判定と独立＝block 経路でも痕跡が残る）。greeter の `fw_heartbeat_staleness` が **implementing/eval/polish で痕跡欠如 or 7 日停滞**（`HEARTBEAT_STALE_DAYS` 可変）を warn — implementing 到達は design-gate の fw_advance 経由でしか起きないため、この phase での痕跡欠如は「発火したはずなのに無い」＝部分死の兆候。**守備範囲は部分死のみ**（全 hook 死は greeter ごと死ぬため原理的に検知不能＝ユーザーが完全沈黙で気づく領域、と明記）。全て observation-only（touch/判定失敗でも門と greeter は不変・`test/heartbeat.sh` C4 で read-only 実証）。あわせて loop-driver の指紋不一致 steer に「変更が遅延 council レポートの消化なら revert + improvements.md 退避」の 1 節を追記（FR-53 altitude 指摘の消化・違反検知の瞬間の live steer が remediation を運ぶ）。`test/heartbeat.sh`(C1-C5)。出所: FR-53 residual + improvements.md。
 
 ### 0.8.34
 - **2.1.198/199 対応（FR-53・council 同期化 + hooks 配線ガード）** — Claude Code 2.1.198 で subagent が**背景実行デフォルト**になり、「fan-out→集約→記録を同一ターンで」という monitor council の核前提が sync 明示なしに成立しなくなった。実踏（FR-52 council）: fork した monitor が観測者を背景 spawn →「完了を待つ」とターン終了 → fork は非永続で待つ主体が消え、完了通知が親セッションに漂着して集約・monitor-set が実行されない＝**Gotcha 113（fork 空振り）の構造的な新 root cause**。対応: monitor Step 2 に観測者の `run_in_background: false`（同期）を明記（同一メッセージ並列呼び出しで並行性は不変）、Gotcha 113 に root cause 追記、「遅延漂着した council レポートは clean 後のツリーに触らず improvements.md へ」（FR-50 指紋の無効化防止）を Gotchas 化。あわせて 2.1.191 のカンマ matcher silent 失敗が示した「気づけない配線破れ」class に `test/hooks-wiring.sh` を追加: hooks.json の valid JSON / 全参照 script 実在 / カンマ matcher 禁止 / monitor sync 指示の消失検知を CI で assert（design-gate は配線が破れると **fail-open** で無音消失するため。positive control 実走込み・FR-51 と同型）。state machine 層は無変更 — 背景化の世界でも「記録された state だけを信じる」sensors-first 設計は fail-closed のまま機能する（今回の空振りも monitor=pending が done を塞いで検知された）。stacked slash-skill の干渉は ROADMAP watch 行のみ。

@@ -12,6 +12,8 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 fw_hook_guard || exit 0   # bypass / dormant なら門は開いている
 
+fw_touch_heartbeat design-gate   # FR-54: 発火痕跡（live positive control）。判定結果と独立・失敗しても門は不変
+
 INPUT="$(cat)"
 fw_parse_tool_input "$INPUT"   # → FW_TOOL / FW_FP
 phase="$(fw_phase)"
