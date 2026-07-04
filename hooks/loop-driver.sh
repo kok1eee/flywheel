@@ -232,24 +232,46 @@ EOF
   # --- adopt chain (FR-33): done で backlog があれば次の goal を自動起動し連続消化する ---
   # 安全性: next が backlog 先頭を pop する＝backlog は単調減少（空で自然停止・無限ループ不可）。
   #   stuck な goal は各 goal の veto/monitor cap が人間へ hand-back するので暴走しない（専用 cap 不要）。
-  # 経路別: adopt（合意済み）は止めず設計→実装へ連鎖。start（要件を一から掘る）も FR-35 以降は
-  #   HOTL で連鎖するが、連鎖前に go/no-go を grill し discovery 中の判断だけ人間に pop する
-  #   （調べる=自動 / 決める=人間 / 判定=monitor）。
+  # 経路別: adopt は Goal C（2026-07-04・ROADMAP:54 follow-up）で「次を始める?」の軽量 checkpoint
+  #   を挟んでから連鎖する（peek→AskUserQuestion→はいで next。いいえ/あとでは backlog 温存）。
+  #   start（要件を一から掘る）は FR-35 以降 HOTL で連鎖し、連鎖前に go/no-go を grill し discovery
+  #   中の判断だけ人間に聞く（調べる=自動 / 決める=人間 / 判定=monitor）。
   # FLYWHEEL_NO_CHAIN=1 で従来の hard-stop（pop せず人間に促すだけ）へ戻す。
   n="$(fw_backlog_count)"
   if [[ "$n" -gt 0 && "${FLYWHEEL_NO_CHAIN:-}" != "1" ]]; then
     fw_chain_checkpoint   # FR-46: 完了 goal を独立 change に確定してから N+1 起動（jj のみ・履歴粒度保持）
+
+    # Goal C: next() は backlog 先頭行を pop してから entry を返す（bin/flywheel next）ため、
+    # 「いいえ」に答えても pop 済みで巻き戻せない事故を防ぐには pop 前に entry を知る必要がある。
+    # entry は add 時点で backlog.jsonl の行自体に載っているので、pop せず先頭行を直接 peek する
+    # （fw_backlog_peek: 1回の jq で entry/goal を両方取る＝この file 冒頭の fork 抑制規約に合わせる）。
+    IFS=$'\t' read -r peek_entry peek_goal < <(fw_backlog_peek)
+
+    if [[ "$peek_entry" == "adopt" ]]; then
+      # 2.1.200 で AskUserQuestion の自動継続（idle timeout）が廃止されたため、無条件の checkpoint
+      # は無人 chain を恒久停止させ得る。方針=idle timeout 前提（対話検知は hook から対話性を確実に
+      # 判定できず脆いため不採用）。真に無人で回したい運用は /config の idle timeout オプトインに
+      # 委ねる（skills/guide/SKILL.md Gotchas 参照）。
+      fw_log_usage "steer:chain-checkpoint"
+      cat >&2 <<EOF
+🔗 flywheel: done。backlog に次の adopt goal があります（残 $n 件・未起動）。
+goal: $peek_goal
+→ まず人間に AskUserQuestion で軽量チェックポイント:「次の goal に進みますか?」
+  （合意済み設計の結晶化に進む前の一声。フル grill は不要）。
+  ・はい          → '$FW_CLI next' を実行して起動 → 会話 / notes の合意を plan/design.md に
+                    結晶化してください（「## 完了条件（eval）」も）。合格で実装ゲートが開き、
+                    eval→done→次へ連鎖します。
+  ・いいえ/あとで → 何もしません。backlog はそのまま残ります（後で /flywheel:next で手動起動）。
+⚠️ 無人運用（spawn-session の flywheel 駆動等）でこの質問により永久停止させたくない場合は、
+   事前に /config で idle timeout をオプトインしてください（2.1.200 で AskUserQuestion の
+   自動継続は廃止済み）。
+EOF
+      exit 2   # stop はブロック。実際の起動は人間の回答後、次ターンで model が next を呼ぶ
+    fi
+
     if "$FW_CLI" next >/dev/null 2>&1; then
       new_goal="$(fw_get '.goal')"
-      if [[ "$(fw_get '.entry')" == "adopt" ]]; then
-        fw_log_usage "steer:chain"
-        cat >&2 <<EOF
-🔗 flywheel: done → adopt chain で次の goal を自動起動しました（backlog 残 $(fw_backlog_count) 件）。
-goal: $new_goal
-→ 会話 / .claude/journal.md 先頭 Next / notes の合意を plan/design.md に結晶化してください（「## 完了条件（eval）」も）。合格で実装ゲートが開き、eval→done→次へ連鎖します。
-EOF
-        exit 2   # 連続自律: 止めずに次の設計へ進ませる
-      fi
+      # ここに来るのは entry=="start"（peek で adopt は上で return 済み）。
       # start 経路（要件を一から掘る）: HOTL で連鎖する（FR-35）。loop-driver は Stop hook で
       # AskUserQuestion を呼べないので、exit 2 + steer で次ターンのモデルに go/no-go grill →
       # discovery → 判断だけ grill を実行させる（調べる=自動 / 決める=人間 / 判定=monitor）。

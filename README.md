@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.38 / MIT License
+v0.8.39 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.39
+- **adopt chain 着手前 checkpoint（Goal C・ROADMAP:54 follow-up）** — v0.8.24 観測: 対話セッション中に done→次 goal が無条件で auto-start すると、人間が別話題に移っていた場合に goal が宙に落ちる事故が起きていた（start 経路は FR-35 で go/no-go grill 済みだが adopt 経路は無条件連鎖のままだった）。`hooks/loop-driver.sh` の done 分岐に checkpoint を追加: `flywheel next`（backlog 先頭を pop）を呼ぶ**前**に、backlog.jsonl の先頭行から `entry` を pop せず peek し、adopt 経路なら「次の goal に進みますか?」という軽量 AskUserQuestion checkpoint を挟む steer を出す（フル grill は不要）。方針は **idle timeout 前提**（2026-07-04 grill で確定）: 対話検知は hook から対話性を確実に判定する信号が無く脆いため不採用、既定 `FLYWHEEL_NO_CHAIN` 化は adopt chain の無人消化という価値そのものを削るため不採用。checkpoint は無条件で挟み、真に無人で回したい運用（`spawn-session` の flywheel 駆動等）は事前に **`/config` の idle timeout をオプトイン**する側に倒す（2.1.200 で AskUserQuestion の自動継続が廃止された制約を踏まえた最小実装。`skills/guide/SKILL.md` Gotchas 既述）。「いいえ/あとで」時は新規 state を持たず、backlog を pop しないまま温存（後で `/flywheel:next` で手動起動）。start 経路・`FLYWHEEL_NO_CHAIN=1` は無変更（回帰）。`test/adopt-chain.sh` を新挙動に合わせて更新（C1 checkpoint で pop しない・phase=done 維持 / C2 steer 内容 / C3-C5 既存回帰）。出所: ROADMAP:54 follow-up・2026-07-04 grill。
 
 ### 0.8.38
 - **sibling .gitignore 警告（FR-57・multi-repo 指紋 churn の入口ガード）** — FR-50/v0.8.31 の既知限界を解消: 本番 jj は untracked を snapshot するため、`flywheel repos` で宣言した sibling の `.gitignore` が `.flywheel` を除外していないと、sibling の state 書き込みのたびに累積 diff（=指紋）が揺れ **clean 指紋不一致 → 無限 re-council** になり得た（FW_ROOT 側は C5 で assert 済み・sibling 側の設計判断が未了だった）。登録ループ内で `grep -qE '^\.flywheel/?$'` を検査し、未除外（`.gitignore` 不在含む）なら **stderr 警告 1 行**（理由 + 対処例つき・exit 0 のまま登録は成功＝**要求でなく警告**。登録拒否は既存運用に過剰、gitignore の自動追記は他リポを勝手に書き換えるので不採用）。`test/repos-gitignore-warn.sh`(C1 未除外で警告付き登録 / C2 `.flywheel/` 除外で無警告 / C3 スラッシュ無し許容)。出所: ROADMAP マルチレポ epic の FR-50 follow-up（v0.8.31 council 由来）。

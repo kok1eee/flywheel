@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "adopt chain 着手前 checkpoint — done→次goal自動起動（adopt entry のみ）前に、AskUserQuestionで軽量『次のgoalに進みますか?』を1問挟む（idle timeout前提。対話検知/既定NO_CHAIN化はしない）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: hooks/loop-driver.sh（adopt分岐240-251行に、start分岐253-267行のHOTLパターンと同型のcheckpoint steerを追加）+ test/adopt-chain.sh（回帰ケース追加：adopt entryはcheckpoint steerが出る／start entryの既存挙動は不変／FLYWHEEL_NO_CHAIN=1は従来どおり無条件stop）+ README changelog/ROADMAP:54状態列更新/version bump 2箇所（plugin.json・marketplace.json）。曖昧点解消: checkpointで「いいえ/あとで」時は既存hard-stop分岐（272-273行相当）を流用しbacklogをpopせず維持・next で後で手動起動を促すのみ（新規state機構は持たない）。方針: idle timeout前提（対話検知・既定FLYWHEEL_NO_CHAIN化は不採用。無人運用は/configのidle timeoutオプトインに委ねる）。出所: ROADMAP:54 follow-up・2026-07-04 grillで確定。",
+  "baseline_rev": "4a8938f2026eecb5125a72813c0fbab2271e7e5a",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-04T01:18:49Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-04T01:22:11Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-04T01:23:32Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-04T01:26:55Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-04T01:27:20Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-09T00:58:00Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T00:58:12Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

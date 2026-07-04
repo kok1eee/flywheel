@@ -243,6 +243,15 @@ fw_backlog_count() {
   [[ -f "$FW_BACKLOG" ]] && awk 'END{print NR+0}' "$FW_BACKLOG" || echo 0
 }
 
+# backlog 先頭行を pop せず覗く（Goal C）。entry/goal を1回の jq でタブ区切り出力する
+# （呼び出し側で `IFS=$'\t' read -r entry goal < <(fw_backlog_peek)` して使う。
+#  空 backlog / jq 失敗時は "start\t?" を返し fail-safe degrade する）。
+fw_backlog_peek() {
+  head -1 "$FW_BACKLOG" 2>/dev/null \
+    | jq -r '[(.entry // "start"), (.goal // "?")] | @tsv' 2>/dev/null \
+    || printf 'start\t?\n'
+}
+
 # プロジェクトファイルから eval(test/lint/型)コマンドを自動検出（--eval 省略時に使う）。
 # 見つからなければ空（loop は degrade で stop 許可）。
 fw_detect_eval() {
