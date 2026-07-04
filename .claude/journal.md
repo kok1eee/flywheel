@@ -3,7 +3,18 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
-## 2026-06-29 21:33 [ip-10-0-67-244]
+## 2026-07-04 09:58 [ip-10-0-67-244]
+
+### Recap
+**/code-review xhigh の 1 指摘（Gotcha 誤配送）を起点に、FR-51〜57 の 7 goal を flywheel dogfood で連続実装し v0.8.32〜v0.8.38 として全て origin/main に push（`main@origin = 6473a7c2`）**。系譜: evolve actor-routing の機械検査（gotcha-actor-routing.sh）→ lens 効果計測（`monitor-set --lens` → monitor-verdicts.csv・初の drift/clean 実データ記録）→ 2.1.198 の subagent 背景デフォルト化対応（monitor council の sync 明記 + hooks-wiring ガード。fork 空振り Gotcha 113 の構造的 root cause を特定）→ design-gate heartbeat live-control（hook 部分死の検知）→ fan-out 棚卸し（council が agents/ 7 ファイルの `background: true` 残骸を捕捉・除去）→ テスト基盤整理（with_readonly / jq_patch / mk_git_repo の rule-of-three 抽出）→ sibling gitignore 警告（FR-50 follow-up 解消）。運用面の決定: **観測・判断のみの subagent（drift-observer / cleanup reviewer 等）は main モデル問わず Sonnet 5 固定**（memory `subagent-model-no-fable-inherit` に記録・列挙のみは Haiku 可）。2.1.200 で AskUserQuestion の自動継続が廃止（無人 chain では質問が恒久ブロック→guide Gotchas に注記済み）。
+
+### Next
+- Goal C「adopt chain の着手前 checkpoint」を grill で詰める（2.1.200 の AskUserQuestion 仕様変更で設計前提が変化: 対話検知 / 既定 FLYWHEEL_NO_CHAIN / idle timeout 前提の三択。ROADMAP:54 follow-up）
+- improvements.md の同乗待ち 3 件: mk_git_repo の残り移行（chain-lib REPO_T 初期化 / monitor-fingerprint.sh / multirepo-diff.sh）/ jq_patch の残り 4 箇所 / loop-driver 指紋不一致 steer への sibling gitignore 原因ヒント再掲
+- Gotcha 113（fork 空振り）が 2.1.199+ の subagent エラー報告修正で再発しなくなったか観察 → 収まっていたら evolve で「頻度減」を注記
+- monitor-verdicts.csv のデータが溜まったら lens 効果の傾向を確認（FR-55 で drift 1 件 lens=observer-requirement が初記録済み）
+
+
 
 ### Recap
 **前セッションの Next 3本（evolve / multi-repo 指紋 / second-brain push）を順番に処理し、flywheel の2 change を
