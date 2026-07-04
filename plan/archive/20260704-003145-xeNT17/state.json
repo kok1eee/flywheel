@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "テスト基盤整理: chain-lib に with_readonly ヘルパ抽出（rule-of-three・trap 復元付き）+ heartbeat phase ゲート分岐の演習 + guide に AskUserQuestion 自動継続廃止（2.1.200）の無人運用注記を同乗",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: test/chain-lib.sh（with_readonly ヘルパ新規）+ test/monitor-lens-csv.sh（C4/C8 を差し替え）+ test/heartbeat.sh（C4 差し替え + phase ゲート分岐 assert 追加）+ skills/guide/SKILL.md（AskUserQuestion 注記）+ README/ROADMAP + version v0.8.37（2箇所）。仮決め（design で覆してよい）: (1) with_readonly は「元 mode を stat -c %a で捕捉 → chmod → cmd 実行 → 復元」で cmd の rc を返し、trap で異常終了時も復元（assert 失敗で fixture が read-only のまま残る現状の穴を塞ぐ）。呼び替え対象は monitor-lens-csv C4（dir 555）/C8（file 444）と heartbeat C4（dir 555）の3箇所。(2) heartbeat phase ゲート演習: spec-ready で無音・eval / polish で warn の個別 assert（state.phase は chain-lib precedent の jq 直編集で切替）。(3) guide への注記: 2.1.200 で AskUserQuestion の自動継続が廃止＝無人 chain では grill/add/discovery-council の質問が恒久ブロックし得る。回避は /config の idle timeout オプトイン or adopt 経路で判断を notes に焼き込み質問レス化。出所: improvements.md の rule-of-three + FR-54 council note + 2.1.200 対応",
+  "baseline_rev": "8db8ea86ca85a36416eb07b955034120ccd53730",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-04T00:13:34Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-04T00:14:33Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-04T00:15:25Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-04T00:17:19Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-04T00:17:30Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-04T00:31:32Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-04T00:31:45Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

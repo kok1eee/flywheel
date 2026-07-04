@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # lens 効果計測（FR-52）: monitor-set --lens が monitor-verdicts.csv に verdict 1行を記録することを検証。
+# + FR-56: with_readonly の復元保証（C9）。
 # chain-lib.sh の隔離ハーネス（mktemp リポ・CLAUDE_PLUGIN_DATA を /tmp）で live state / 本番 CSV を汚さない。
 set -uo pipefail
 
@@ -35,9 +36,7 @@ ok "C3: pending は非記録"
 
 # C4: データ領域が書き込み不能でも verdict 記録は成功する（observation-only の実証）
 rm -f "$CSV"
-chmod 555 "$CLAUDE_PLUGIN_DATA"
-rc=0; "$FW" monitor-set drift implementing "r2" --lens observer-progress >/dev/null 2>&1 || rc=$?
-chmod 755 "$CLAUDE_PLUGIN_DATA"
+rc=0; with_readonly "$CLAUDE_PLUGIN_DATA" 555 "$FW" monitor-set drift implementing "r2" --lens observer-progress >/dev/null 2>&1 || rc=$?
 [ "$rc" = "0" ] || fail "C4: CSV 書き込み不能で monitor-set が失敗した（rc=$rc）"
 [ "$(getf '.monitor.reason')" = "r2" ] || fail "C4: verdict が state に入っていない"
 [ ! -f "$CSV" ] || fail "C4: 書き込み不能なのに CSV ができている"
@@ -63,12 +62,17 @@ ok "C7: lens の sanitize（引用符除去・カンマ→パイプ）が効く"
 
 # C8: 既存 CSV への append 失敗（C4 は新規作成失敗のみ）。CSV 自体を read-only にしても verdict は成功
 n_before="$(grep -c . "$CSV")"
-chmod 444 "$CSV"
-rc=0; "$FW" monitor-set drift implementing "r5" --lens observer-a >/dev/null 2>&1 || rc=$?
-chmod 644 "$CSV"
+rc=0; with_readonly "$CSV" 444 "$FW" monitor-set drift implementing "r5" --lens observer-a >/dev/null 2>&1 || rc=$?
 [ "$rc" = "0" ] || fail "C8: append 失敗で monitor-set が非ゼロ（rc=$rc）"
 [ "$(getf '.monitor.reason')" = "r5" ] || fail "C8: verdict が state に入っていない"
 [ "$(grep -c . "$CSV")" = "$n_before" ] || fail "C8: read-only CSV に行が増えている"
 ok "C8: 既存 CSV への append 失敗でも verdict 記録は成功（observation-only）"
+
+# C9: with_readonly の復元保証 — 非ゼロ cmd でも rc が透過し、呼ぶ前の mode に復元される（FR-56）
+mode_before="$(stat -c %a "$CSV")"   # umask 依存の決め打ちを避け、契約「呼ぶ前の mode に戻す」を直接検証
+rc=0; with_readonly "$CSV" 444 false || rc=$?
+[ "$rc" = "1" ] || fail "C9: 非ゼロ cmd の rc が透過しない（rc=$rc）"
+[ "$(stat -c %a "$CSV")" = "$mode_before" ] || fail "C9: 非ゼロ cmd 後に mode が復元されていない（$(stat -c %a "$CSV") != $mode_before）"
+ok "C9: with_readonly は非ゼロでも mode 復元 + rc 透過"
 
 echo "🎉 monitor-lens-csv 全ケース PASS"

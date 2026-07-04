@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # hook 発火の live positive control（FR-54）: design-gate の heartbeat touch と greeter の部分死 warn を検証。
+# + FR-56: phase ゲート分岐の演習（C6-C8: spec-ready 無音 / eval・polish warn）。
 # chain-lib.sh の隔離ハーネス（mktemp リポ・CLAUDE_PLUGIN_DATA を /tmp）で本番 heartbeat を汚さない。
 set -uo pipefail
 
@@ -46,9 +47,7 @@ ok "C2.5: mtime 停滞で warn（閾値は HEARTBEAT_STALE_DAYS で可変）"
 
 # C4: データ領域が書き込み不能でも design-gate の挙動は不変（observation-only）
 rm -f "$HB"
-chmod 555 "$CLAUDE_PLUGIN_DATA"
-rc="$(gate_edit "$REPO_T/src.sh")"
-chmod 755 "$CLAUDE_PLUGIN_DATA"
+rc="$(with_readonly "$CLAUDE_PLUGIN_DATA" 555 gate_edit "$REPO_T/src.sh")"
 [ "$rc" = "0" ] || fail "C4: heartbeat 書き込み不能で design-gate が exit $rc"
 [ ! -f "$HB" ] || fail "C4: 書き込み不能なのに heartbeat ができている"
 ok "C4: 計測失敗でも門の挙動は不変（observation-only）"
@@ -61,5 +60,21 @@ rc="$(gate_edit "$REPO_T/src.sh")"
 [ "$rc" = "2" ] || fail "C5: designing の source 編集が exit $rc（block されるべき）"
 [ -f "$HB" ] || fail "C5: block された発火で heartbeat が残っていない（touch は判定と独立のはず）"
 ok "C5: block 経路でも発火痕跡は残る"
+
+# C6-C8: phase ゲートの分岐演習（FR-54 council note の消化。implementing は C2 で演習済み）
+S="$REPO_T/.flywheel/state.json"
+rm -f "$HB"
+
+jq_patch "$S" '.phase="spec-ready"' || fail "phase 切替失敗: spec-ready"
+greeter_ctx | grep -q "発火痕跡" && fail "C6: spec-ready で warn した（未発火が正常な phase）"
+ok "C6: spec-ready は heartbeat 欠如でも無音"
+
+jq_patch "$S" '.phase="eval"' || fail "phase 切替失敗: eval"
+greeter_ctx | grep -q "発火痕跡がありません" || fail "C7: eval で warn しない"
+ok "C7: eval は heartbeat 欠如で warn"
+
+jq_patch "$S" '.phase="polish"' || fail "phase 切替失敗: polish"
+greeter_ctx | grep -q "発火痕跡がありません" || fail "C8: polish で warn しない"
+ok "C8: polish は heartbeat 欠如で warn"
 
 echo "🎉 heartbeat 全ケース PASS"
