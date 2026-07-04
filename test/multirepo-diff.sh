@@ -15,10 +15,12 @@ MAIN="$TMP/main"; SIB="$TMP/sib"
 mkdir -p "$MAIN" "$SIB"
 export CLAUDE_PLUGIN_DATA="$TMP/data"; mkdir -p "$CLAUDE_PLUGIN_DATA"  # 本番 CSV 汚染防止
 
-# 2リポを git init + 初期 commit（baseline を作る）
+# 2リポを git init + 初期 commit（baseline を作る）。sibling は .flywheel を gitignore
+# （FR-57 の警告を CI ログに出さない・警告自体の検証は test/repos-gitignore-warn.sh の担当）
 for d in "$MAIN" "$SIB"; do
   ( cd "$d" && git init -q && git config user.email t@example.com && git config user.name tester \
-    && echo seed > seed.txt && git add -A && git commit -qm init ) || fail "git 初期化失敗: $d"
+    && echo seed > seed.txt && echo ".flywheel/" > .gitignore && git add -A && git commit -qm init ) \
+    || fail "git 初期化失敗: $d"
 done
 
 # main で start（cwd=MAIN → FW_ROOT=MAIN, baseline=MAIN HEAD）

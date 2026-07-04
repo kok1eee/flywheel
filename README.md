@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.37 / MIT License
+v0.8.38 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.38
+- **sibling .gitignore 警告（FR-57・multi-repo 指紋 churn の入口ガード）** — FR-50/v0.8.31 の既知限界を解消: 本番 jj は untracked を snapshot するため、`flywheel repos` で宣言した sibling の `.gitignore` が `.flywheel` を除外していないと、sibling の state 書き込みのたびに累積 diff（=指紋）が揺れ **clean 指紋不一致 → 無限 re-council** になり得た（FW_ROOT 側は C5 で assert 済み・sibling 側の設計判断が未了だった）。登録ループ内で `grep -qE '^\.flywheel/?$'` を検査し、未除外（`.gitignore` 不在含む）なら **stderr 警告 1 行**（理由 + 対処例つき・exit 0 のまま登録は成功＝**要求でなく警告**。登録拒否は既存運用に過剰、gitignore の自動追記は他リポを勝手に書き換えるので不採用）。`test/repos-gitignore-warn.sh`(C1 未除外で警告付き登録 / C2 `.flywheel/` 除外で無警告 / C3 スラッシュ無し許容)。出所: ROADMAP マルチレポ epic の FR-50 follow-up（v0.8.31 council 由来）。
 
 ### 0.8.37
 - **テスト基盤整理（FR-56・with_readonly + phase ゲート演習 + guide 注記）** — 「chmod → 実行 → chmod 戻し → assert」の observation-only 演習イディオムが 3 箇所（monitor-lens-csv C4/C8・heartbeat C4）に verbatim コピーされ rule-of-three 到達（FR-55 simplify 指摘）、しかも assert 失敗で fixture が read-only のまま残り mktemp EXIT trap の掃除が静かに失敗する穴があった。`test/chain-lib.sh` に **`with_readonly <path> <mode> <cmd...>`** を抽出（元 mode を stat で捕捉→chmod→実行→復元・cmd の rc 透過）し、異常系は chain-lib の EXIT trap に `chmod -R u+w` を前置する**二段構え**で復元を保証（C9 で「非ゼロ cmd でも mode 復元 + rc 透過」を実走 assert）。同乗①: heartbeat の phase ゲート分岐演習（C6 spec-ready 無音 / C7 eval warn / C8 polish warn＝case 文 3 値を個別に踏み typo リグレッションを CI が拾える・FR-54 council note 消化）。同乗②: guide Gotchas に **2.1.200 の AskUserQuestion 自動継続廃止**の無人運用注記（無人 chain では grill/add/discovery-council の質問が恒久ブロックし得る→ /config の idle timeout オプトイン or adopt 経路で質問レス化）。出所: improvements.md の rule-of-three + FR-54 council low note + 2.1.200 対応。

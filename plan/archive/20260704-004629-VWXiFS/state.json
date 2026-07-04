@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "multi-repo: flywheel repos 登録時に sibling の .gitignore が .flywheel を除外していなければ警告（state churn で指紋が揺れ無限 re-council する既知穴の入口ガード・FR-50 follow-up 解消）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: bin/flywheel（repos コマンドに警告追加）+ test/multirepo-diff.sh に 1 ケース（or 新規 test）+ README/ROADMAP（FR-50 follow-up 行の解消を明記）+ version v0.8.38（2箇所）。仮決め（design で覆してよい）: (1) flywheel repos <path> の登録時、sibling リポルートの .gitignore に .flywheel エントリが無ければ stderr 警告 1 行（exit 0 のまま・登録は成功＝要求でなく警告。要求＝登録拒否は既存運用を壊すため過剰と判断）。警告文に理由（本番 jj は untracked を snapshot するため state churn で指紋が揺れ無限 re-council し得る・FR-50 follow-up）と対処例（echo .flywheel/ >> .gitignore）を含める。(2) 判定は sibling の .gitignore を grep（^\\.flywheel か .flywheel/ を許容・無ファイルは警告対象）。(3) 警告は observation-only（判定失敗でも登録は成功させる）。出所: ROADMAP マルチレポ epic FR-50 follow-up（v0.8.31 council 由来・low）",
+  "baseline_rev": "ac6f05692a3af13e525b3fa283c00204fce3d124",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-04T00:31:45Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-04T00:32:40Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-04T00:32:53Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-04T00:34:15Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-04T00:34:26Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-04T00:46:17Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-04T00:46:29Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

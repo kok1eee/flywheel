@@ -31,6 +31,16 @@ blc()   { local b="$REPO_T/.flywheel/backlog.jsonl"; [ -s "$b" ] && grep -c . "$
 # 例: jq_patch "$s" '.phase="eval"' / jq_patch "$s" --arg p "$p" '.phase=$p'
 jq_patch() { local f="$1"; shift; jq "$@" "$f" > "$f.tmp" && mv "$f.tmp" "$f"; }
 
+# mk_git_repo <name>: $TMP/<name> に使い捨て git リポ（seed 1 commit）を作り絶対 path を echo（FR-57）。
+# REPO_T 初期化・multirepo 系 fixture と同型のボイラープレートの共有形。
+mk_git_repo() {
+  local d="$TMP/$1"
+  mkdir -p "$d"
+  ( cd "$d" && git init -q && git config user.email t@example.com && git config user.name tester \
+    && echo seed > seed.txt && git add -A && git commit -qm init ) || fail "git リポ初期化失敗: $1"
+  echo "$d"
+}
+
 # 任意 eval_cmd で「実装中（eval が走る）」状態を作る素地。fresh start なので veto=0。
 setup_impl() {  # $1 = eval_cmd
   rm -rf "$REPO_T/.flywheel" "$REPO_T/plan"

@@ -278,6 +278,10 @@ case "$cmd" in
       [[ -d "$_dir" ]] || { echo "flywheel repos: ディレクトリが無い: $_p（FW_ROOT 相対 or 絶対）" >&2; exit 1; }
       _b="$(fw_repo_baseline "$_dir")"
       [[ -z "$_b" ]] && echo "⚠️ flywheel repos: $_p は jj/git リポに見えません（baseline 空＝diff 計測は 0 扱い）" >&2
+      # FR-57: sibling の .gitignore が .flywheel を除外していないと、jj の untracked snapshot で
+      # state churn のたびに指紋が揺れ無限 re-council し得る（FR-50 follow-up）。警告のみ・登録は成功。
+      grep -qE '^/?\.flywheel/?$' "$_dir/.gitignore" 2>/dev/null \
+        || echo "⚠️ flywheel repos: $_p の .gitignore が .flywheel を除外していません（state 書き込みで指紋が揺れ re-council が無限化し得る）。対処: echo '.flywheel/' >> $_p/.gitignore" >&2
       _rj="$(jq -cn --argjson a "$_rj" --arg p "$_p" --arg b "$_b" '$a + [{path:$p, baseline:$b}]')"
     done
     fw_set_json repos "$_rj"
