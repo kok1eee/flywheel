@@ -2,7 +2,7 @@
 name: drift-observer
 description: 実装が要件・設計・期待挙動から drift（乖離）していないか、与えられた1つのレンズで検証する観測者。監視 council（Skill: flywheel:monitor）から fan-out される。「drift 確認」「乖離検知」「実装と計画のズレを見て」で発動。※ 計画レビューは critic、完了前の自己検証は verification。
 tools: Read, Glob, Grep
-model: inherit
+model: sonnet
 memory: project
 permissionMode: plan
 disallowedTools: [Write, Edit, Bash]

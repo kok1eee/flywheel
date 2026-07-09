@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.39 / MIT License
+v0.8.40 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.40
+- **agent model tiering（観測・レビュー専任 agent の sonnet 静的固定）** — メインループの Fable 5 移行で、`model: inherit` のままの fan-out agent（監視 council の観測者 3 体＝goal 毎に必発・最頻の fan-out 面）が上位モデルで走りコスト過大になる問題。7/3 の memory 運用ルール「観測系 subagent は spawn 時に `model: "sonnet"` を明示」は prompt-level（spawn するモデルが memory を思い出せば効く）で機械強制が無く、C-2 思想（モデルの記憶に頼らず機械が強制）に照らして frontmatter への静的固定に切り替えた。判定基準は「**考える部分（要件・設計の生成）か、視て判断を返すだけか**」: sonnet 固定 12（drift-observer / architecture-mapper / code-explorer / critic / researcher / scout を inherit→sonnet 変更 + convention-scout / market-researcher / oss-scout / pattern-observer / security-reviewer / debugger の既存固定を維持。debugger はユーザー判断＝難案件はメインループが直接デバッグする運用でカバー）、inherit 維持 2（analyst / designer ＝考える部分）、対象外 1（capabilities＝spawn されない reference doc）。**機械ガード** `test/agent-model-tiering.sh`（FR-51 同型・grep-lib）: 層別リスト照合 + **リスト外検知（新 agent 追加時の指定忘れを fail）** + 層別リスト全ファイルの実在 assert（rename 検知）+ positive control 実走（層別違反 fixture と リスト外 fixture を検出して非ゼロ）。旧 memory の「静的書き換えは避ける（転用時の硬直化）」懸念は、Agent ツールの明示 `model` パラメータが frontmatter より優先されるため per-call override 余地が残ることで解消（memory も更新）。出所: 2026-07-09 会話（Fable 5 移行に伴う observer コスト対策・monitor 必要性議論の帰結）。
 
 ### 0.8.39
 - **adopt chain 着手前 checkpoint（Goal C・ROADMAP:54 follow-up）** — v0.8.24 観測: 対話セッション中に done→次 goal が無条件で auto-start すると、人間が別話題に移っていた場合に goal が宙に落ちる事故が起きていた（start 経路は FR-35 で go/no-go grill 済みだが adopt 経路は無条件連鎖のままだった）。`hooks/loop-driver.sh` の done 分岐に checkpoint を追加: `flywheel next`（backlog 先頭を pop）を呼ぶ**前**に、backlog.jsonl の先頭行から `entry` を pop せず peek し、adopt 経路なら「次の goal に進みますか?」という軽量 AskUserQuestion checkpoint を挟む steer を出す（フル grill は不要）。方針は **idle timeout 前提**（2026-07-04 grill で確定）: 対話検知は hook から対話性を確実に判定する信号が無く脆いため不採用、既定 `FLYWHEEL_NO_CHAIN` 化は adopt chain の無人消化という価値そのものを削るため不採用。checkpoint は無条件で挟み、真に無人で回したい運用（`spawn-session` の flywheel 駆動等）は事前に **`/config` の idle timeout をオプトイン**する側に倒す（2.1.200 で AskUserQuestion の自動継続が廃止された制約を踏まえた最小実装。`skills/guide/SKILL.md` Gotchas 既述）。「いいえ/あとで」時は新規 state を持たず、backlog を pop しないまま温存（後で `/flywheel:next` で手動起動）。start 経路・`FLYWHEEL_NO_CHAIN=1` は無変更（回帰）。`test/adopt-chain.sh` を新挙動に合わせて更新（C1 checkpoint で pop しない・phase=done 維持 / C2 steer 内容 / C3-C5 既存回帰）。出所: ROADMAP:54 follow-up・2026-07-04 grill。

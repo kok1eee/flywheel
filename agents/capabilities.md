@@ -84,13 +84,13 @@ TeamCreate → team_name で作成
 
 ### モデル選択（sub-agent を切るとき・FR-26）
 
-既定は**指定省略 = 継承**（main loop / 親 agent のモデルがそのまま使われる）。降格は確信があるときだけ:
+flywheel の agents/*.md は **frontmatter で静的に層別済み**（v0.8.40・`test/agent-model-tiering.sh` が CI で assert）。判定基準は「考える部分（要件・設計の生成）か、視て判断を返すだけか」:
 
 | タスク性質 | モデル | 例 |
 |---|---|---|
-| 列挙系（機械的 sweep） | `haiku` を明示 | ファイル探索、出現数カウント、命名規則の抽出（convention-scout） |
-| 解釈系（気づけるかが勝負） | 省略（継承） | なぜこう設計されているか、隠れた制約、反証、要件発見 |
-| 判断層（統合・確定） | agent 定義が `inherit` | analyst / scout / researcher / critic / designer |
+| 観測・偵察・レビュー専任（コードを書かない） | agent 定義が `sonnet` | drift-observer / critic / scout / researcher / 偵察系 / debugger（難案件はメインループが直接） |
+| 考える部分（要件・設計の生成） | agent 定義が `inherit` | analyst / designer |
+| 列挙系（機械的 sweep）を ad-hoc に切るとき | `haiku` を明示 | ファイル探索、出現数カウント |
 
 - 安い子の失敗モードは「**重要なディテールを要約で潰す**」。要件発見の文脈では見落とした制約が design に伝播して一番高くつく——迷ったら継承
 - **staged escalation**: 子の報告が期待と食い違う / 薄すぎる → 同じ調査を継承モデルで撃ち直す

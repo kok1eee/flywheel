@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "agent model tiering — 観測・偵察・レビュー専任の agents/*.md 6ファイルを model: sonnet に静的固定（考える部分 analyst/designer は inherit 維持）+ test/agent-model-tiering.sh で層別リストを機械 assert（新agent追加時の指定忘れも CI が拾う）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: agents/6ファイルのfrontmatter model変更（drift-observer/architecture-mapper/code-explorer/critic/researcher/scout を inherit→sonnet。1行ずつ）+ test/agent-model-tiering.sh 新規（grep-lib source・FR-51 gotcha-actor-routing と同型。sonnet固定リスト12=上記6+既存6(convention-scout/market-researcher/oss-scout/pattern-observer/security-reviewer/debugger) が model: sonnet、思考系リスト2=analyst/designer が model: inherit を frontmatter grep で assert。capabilities は spawn されない reference doc なので対象外）+ README changelog / ROADMAP 行追加 / version bump v0.8.40（plugin.json・marketplace.json 2箇所）。確定判断: critic/scout/researcher は sonnet（読んで判断はコードを書かない）・debugger はユーザー判断で sonnet のまま（コスト重視・難案はメインループが直接やる）・analyst/designer のみ inherit=考える部分。同乗: memory subagent-model-no-fable-inherit の『静的書き換えは避ける』を『構造的にread-onlyなagentは静的固定が正』に更新（リポ外・指紋非影響）。出所: 2026-07-09 会話（Fable 5移行に伴うobserverコスト対策・monitor必要性議論の帰結）",
+  "baseline_rev": "d87a1192db53163cd70d88e63f58161baa366d87",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-09T05:08:13Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-09T05:09:17Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-09T05:10:21Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-09T05:12:43Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T05:12:53Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-09T05:22:09Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T05:22:21Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

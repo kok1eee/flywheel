@@ -2,7 +2,7 @@
 name: architecture-mapper
 description: 既存コードベースの抽象境界・モジュール構造・データモデルを把握するエージェント。途中から（既存アプリへの機能追加）モードの Phase B で並列 spawn される。新機能を「どのレイヤー・どのモジュールに置くか」を判断する材料を提供。「アーキテクチャ把握」「どこに置く？」「モデル構造調べて」「境界を地図化」で発動。※ 個別機能トレースは code-explorer、命名規則は convention-scout を使う。
 tools: Read, Glob, Grep
-model: inherit
+model: sonnet
 memory: project
 permissionMode: plan
 disallowedTools: [Write, Edit, Bash, WebSearch, WebFetch]
