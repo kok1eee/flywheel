@@ -1,0 +1,91 @@
+{
+  "phase": "done",
+  "goal": "monitor council のコスト比例制御 — 標的再council（drift修正後は指摘lensのみ1体・安全弁3条件でフル復帰）+ lite council（diff<250行は初回から観測1体に3レンズ統合・env可変）+ monitor-verdicts.csv に diff_lines 列（lite/full の捕捉率比較をデータ駆動化）。実測2.4回/goal の council コストを構造的に削減",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "確定判断（2026-07-09 Fable 5 grill・コスト分析: council は 1 goal あたり実測約2.4回＝再council が最大コスト源、観測者は v0.8.40 で Sonnet 固定済み）: (1)標的再council — drift(implementing) 修正後の再検証は指摘 lens のみ1体で fan-out。安全弁は標準セット＝ watch_focus 設定時フル / design・requirements レベル drift 後フル / 修正diffが大きいときフル。(2)lite council — 初回 council も diff < FLYWHEEL_MONITOR_LITE_DIFF（既定250行・env可変）かつ watch_focus 空なら観測1体に3レンズ統合 charter で fan-out（250は直近goal 212〜330行が lite/full 半々に割れて比較データが自然に溜まるバランス点）。(3)計測 — monitor-verdicts.csv に diff_lines 列を追加（5列目）し lite/full の drift 捕捉率比較を後からデータ駆動で判定可能に。機構スケッチ: [a] bin/flywheel monitor-set が --lens を CSV だけでなく state.monitor オブジェクトにも保存。[b] hooks/loop-driver.sh の drift(impl) 執行分岐で monitor null 化の前に last_drift={lens,level,diff_lines,ts} を state 退避（hook 書き込み=C-2整合）・clean 執行で last_drift クリア。[c] loop-driver の monitor pending prime steer に fw_goal_diff_lines を含め、閾値未満なら『lite council 可』・last_drift 有なら『標的再council 可: lens=X のみ』を明示（判断の入力は hook が計算した客観値＝センサー駆動。安全弁条件も steer 側で判定して出し分け）。[d] skills/monitor/SKILL.md Step 2 に lite/標的モードを追記し、Gotcha に『lite/標的は loop-driver の steer が明示したときだけ。モデル自身の裁量で観測を減らさない（self-graded 化防止）』を明記。[e] hooks/lib/common.sh fw_log_monitor_verdict に diff_lines 引数追加。Boundary: bin/flywheel + hooks/loop-driver.sh + hooks/lib/common.sh + skills/monitor/SKILL.md + test/monitor-lens-csv.sh 更新（5列対応）+ 新テスト（steer 出し分け: 閾値未満 lite ヒント/超フル/watch_focus フル/drift 後標的ヒント/design レベルはフル）+ README changelog/ROADMAP 行/version v0.8.42（plugin.json・marketplace.json 2箇所）。曖昧点（design で決める）: 既存 CSV の4列→5列ヘッダ移行の扱い / 『修正diffが大きい』の具体計測（現 diff_lines − last_drift.diff_lines の差分閾値。env 流用か固定か）。出所: 2026-07-09 コスト削減 grill（monitor 必要性議論の続き・HOTL の判定レバーは維持したままコストを下げる）",
+  "baseline_rev": "5a2f993b2ed89bab91a07835044705d751a42a32",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-09T11:39:09Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-09T11:42:27Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-09T11:42:46Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-09T11:50:05Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T11:50:20Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-09T12:24:46Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T12:25:02Z",
+      "from": "eval",
+      "to": "designing",
+      "by": "loop-driver: monitor drift (design) → 人間 hand-back"
+    },
+    {
+      "ts": "2026-07-09T12:27:08Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-09T12:27:27Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-09T12:42:35Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T12:42:50Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0,
+  "last_drift": {
+    "lens": "observer-requirement|observer-behavior",
+    "level": "design",
+    "diff_lines": "250",
+    "ts": "2026-07-09T12:25:02Z"
+  }
+}

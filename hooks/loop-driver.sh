@@ -65,10 +65,18 @@ enter_polish() {  # $1 = steer 冒頭文脈, $2 = "monitor" で融合
   if [[ "${2:-}" == "monitor" ]]; then
     fw_set_json monitor '{"status":"pending"}'
     fw_log_usage "steer:monitor"
+    # v0.8.42 (drift(design) 修正): FR-38 融合は monitor pending 初回分岐（mstatus=="" ブロック・
+    # monitor_hint() 呼び出し）より先に発火するため、ここで計算しないと lite hint が既定設定
+    # （diff 30〜250行の通常サイズ goal）で一度も出ない構造的欠陥になる。last_drift はこの時点
+    # （goal 最初の eval 緑）では必ず未設定なので monitor_hint は素直に lite 判定のみ行う。
+    local wf hint lite_th
+    wf="$(fw_get '.watch_focus')"
+    lite_th="${FLYWHEEL_MONITOR_LITE_DIFF:-250}"
+    hint="$(monitor_hint "$wf" "$diff_n" "$lite_th")"
     cat >&2 <<EOF
 $1 done の前に2つを【同じターンで・この順に】:
 1) Skill: simplify でコードを整理（polish: reuse/簡素化/効率/altitude）。
-2) 続けて Skill: flywheel:monitor で drift を検証（観測者 fan-out: 要件逸脱/挙動/進捗）。simplify の結果を検証するので必ず simplify の後。
+2) 続けて Skill: flywheel:monitor で drift を検証（観測者 fan-out: 要件逸脱/挙動/進捗）。simplify の結果を検証するので必ず simplify の後。${wf:+ 重点(watch-focus): $wf}${hint}
 次の停止で eval 緑 + monitor verdict を一括判定 → clean なら done。
 EOF
   else
@@ -80,16 +88,39 @@ EOF
 # polish を実施すべきか（FR-11 + FR-20 の diff 適応）。
 # polish=true・未実施で、goal の累積 diff が閾値以上のときだけ 0 を返す。
 # 小 diff の goal（typo 修正等）は simplify 1ターンが過剰なので skip して即 done へ。
+# $1（任意）: 呼び出し側が既に計算済みの diff 行数。省略時は自前で計算する（単体呼び出し安全）。
 should_polish() {
   [[ "$polish" == "true" && "$polished" != "true" ]] || return 1
-  local min="${FLYWHEEL_POLISH_MIN_DIFF:-30}" n
-  n="$(fw_goal_diff_lines)"
+  local min="${FLYWHEEL_POLISH_MIN_DIFF:-30}" n="${1:-$(fw_goal_diff_lines)}"
   if [[ -n "$n" && "$n" -lt "$min" ]]; then
     fw_set_json polished true   # skip も実施判断済みとして記録（再判定しない）
     echo "ℹ️ flywheel: goal の累積 diff が ${n} 行（閾値 ${min} 未満・FLYWHEEL_POLISH_MIN_DIFF）のため polish を省略します。" >&2
     return 1
   fi
   return 0   # diff が大きい or 計測不能（baseline なし）→ 従来どおり polish
+}
+
+# lite/標的 council のヒントを組み立てる（v0.8.42・コスト比例制御）。
+# $1=watch_focus $2=diff_n（このターンの累積 diff 行数）$3=lite 閾値。
+# last_drift（drift(impl) 修正の再検証用）は one-shot 消費: 存在すれば安全弁の判定結果に関わらず
+# ここで必ず1回だけクリアする（`monitor` フィールドの既存クリア規約と同じ「読んだら即クリア」に統一。
+# 分岐の内側にクリアを書くと、書き漏らした分岐だけ stale に残る＝FR-50 の stale clean と同種の穴）。
+monitor_hint() {
+  local wf="$1" diff_n="$2" lite_th="$3" ld_level ld_diff ld_lens
+  ld_level="$(fw_get '.last_drift.level')"
+  if [[ -n "$ld_level" ]]; then
+    ld_diff="$(fw_get '.last_drift.diff_lines')"
+    ld_lens="$(fw_get '.last_drift.lens')"
+    fw_set_json last_drift null   # one-shot 消費（安全弁①②③どれに転んでも必ずここでクリア）
+    [[ -n "$wf" ]] && return 0                                                  # 安全弁①: watch_focus 優先
+    [[ "$ld_level" == "design" || "$ld_level" == "requirements" ]] && return 0  # 安全弁②: 設計やり直し後
+    { [[ -z "$diff_n" || -z "$ld_diff" ]] || (( diff_n - ld_diff > lite_th )); } && return 0   # 安全弁③
+    echo " 直前の drift 修正の再検証です。標的再council 可: 指摘レンズ（${ld_lens:-不明}）のみ観測者1体で再検証してよい（他レンズは前回 clean 相当）。"
+    return 0
+  fi
+  [[ -z "$wf" && -n "$diff_n" && "$diff_n" -lt "$lite_th" ]] && \
+    echo " diff は ${diff_n} 行（閾値 ${lite_th} 未満・FLYWHEEL_MONITOR_LITE_DIFF）。lite council 可: 観測者1体に3レンズ（要件逸脱/挙動/進捗）を統合して fan-out してよい。"
+  return 0
 }
 
 # spec-ready のまま停止 = 門が開いたのに source 編集ゼロ。eval を回すと「未実装でも既存
@@ -122,9 +153,12 @@ $out"
 if [[ "$rc" -eq 0 ]]; then
   fw_set_json veto_count 0
   fw_set_json last_fail_count 0   # FR-25: green を baseline に（以後の悪化 = 0→N で即 revert steer）
+  # v0.8.42: diff 行数はこのターン内で should_polish と monitor gate の両方が使うので1回だけ計算
+  # （同一ツリー状態への jj/git diff 二重フォークを避ける）。
+  diff_n="$(fw_goal_diff_lines)"
   # 初回合格 → done の前に polish を1回（green を確認してから磨く = polish-on-green）
   # 既定では polish と monitor を1ターンに融合（FR-38）。FLYWHEEL_NO_FUSE=1 で従来の分離2ステップ。
-  if should_polish; then
+  if should_polish "$diff_n"; then
     if [[ "${FLYWHEEL_NO_FUSE:-}" == "1" ]]; then
       enter_polish "✅ flywheel: eval 合格（$eval_cmd）。done の前に仕上げ:"
     else
@@ -147,7 +181,11 @@ if [[ "$rc" -eq 0 ]]; then
     fi
     fw_log_usage "steer:monitor"
     wf="$(fw_get '.watch_focus')"
-    echo "🔎 flywheel: eval 合格（$eval_cmd）。done の前に Skill: flywheel:monitor で drift を検証してください（観測者を fan-out: 要件逸脱 / 挙動 / 進捗）。${wf:+ 重点(watch-focus): $wf}" >&2
+    # v0.8.42: council のコスト比例制御。lite（初回 diff 小）/ 標的（直前 drift 修正の再検証）を
+    # steer で「可」として提示する（skill 側の任意選択・自己判断での縮小は Gotcha で禁止）。
+    lite_th="${FLYWHEEL_MONITOR_LITE_DIFF:-250}"
+    hint="$(monitor_hint "$wf" "$diff_n" "$lite_th")"
+    echo "🔎 flywheel: eval 合格（$eval_cmd）。done の前に Skill: flywheel:monitor で drift を検証してください（観測者を fan-out: 要件逸脱 / 挙動 / 進捗）。${wf:+ 重点(watch-focus): $wf}${hint}" >&2
     exit 2
   elif [[ "$mstatus" == "pending" ]]; then
     if monitor_bump; then
@@ -161,6 +199,13 @@ if [[ "$rc" -eq 0 ]]; then
   elif [[ "$mstatus" == "drift" ]]; then
     mlevel="$(fw_get '.monitor.level')"
     mreason="$(fw_get '.monitor.reason')"
+    mlens="$(fw_get '.monitor.lens')"
+    # v0.8.42: 次回 pending 到達時の標的再council/安全弁②判定用に退避（monitor null 化の前に）。
+    # diff_lines は monitor-set（bin/flywheel）が記録済みの値を読み回す（同一ツリー状態への
+    # fw_goal_diff_lines 再フォークを避ける・プロセスを跨いだ二重計算の解消）。
+    mdiff="$(fw_get '.monitor.diff_lines')"
+    fw_set_json last_drift "$(jq -cn --arg l "$mlens" --arg lv "$mlevel" --arg d "$mdiff" \
+      --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{lens:$l, level:$lv, diff_lines:$d, ts:$ts}')"
     fw_set_json monitor null   # クリア（修正後の緑で再検証させる）
     case "$mlevel" in
       design|requirements)

@@ -406,12 +406,24 @@ _fw_log_csv() {
 # 計測（FR-18）: skill 使用 / steer 発行を CSV に1行追記する。観測のみで、失敗しても本処理を妨げない。
 fw_log_usage() { _fw_log_csv skill-usage.csv "timestamp,skill" "$1"; }
 
-# 計測（FR-52）: 監視 council の verdict を monitor-verdicts.csv に1行追記する（$1=status $2=level
-# $3=lenses カンマ列）。clean も記録して分母（council 実行回数）にする。lenses は入力カンマ列を
-# `|` 連結に正規化して CSV 4列を固定。読み手は人間（AUTO-GOTCHAS 追い出し・着眼点昇格の判断材料）。
+# 計測（FR-52・v0.8.42で6列化）: 監視 council の verdict を monitor-verdicts.csv に1行追記する
+# （$1=status $2=level $3=lenses（呼び出し元で正規化済み・|連結）$4=diff_lines $5=mode（lite/targeted/full））。
+# clean も記録して分母（council 実行回数）にする。読み手は人間（AUTO-GOTCHAS 追い出し・
+# 着眼点昇格・lite/targeted/full の捕捉率比較の判断材料）。
+# 契約: $3 は呼び出し元（bin/flywheel monitor-set）で正規化済み文字列を渡すこと（このファイル内では
+# 正規化しない＝正規化の実体を1箇所に集約）。
+# 旧ヘッダ（4列・v0.8.33〜v0.8.41 / 5列・v0.8.42 開発中）からの移行: 既存 CSV のヘッダ行だけを
+# 新形式に1回だけ置換する（_fw_log_csv はファイル存在時にヘッダを書き直さない仕様のため。
+# データ行は不変＝旧行は末尾列欠落のまま）。
 fw_log_monitor_verdict() {
-  local lenses; lenses="$(printf '%s' "${3:-}" | tr -d '"\n' | tr ',' '|')"
-  _fw_log_csv monitor-verdicts.csv "timestamp,verdict,level,lenses" "$1,${2:-},$lenses"
+  local d csv hdr; d="$(fw_data_dir)"; csv="$d/monitor-verdicts.csv"
+  if [[ -f "$csv" ]]; then
+    hdr="$(head -1 "$csv" 2>/dev/null)"
+    if [[ "$hdr" == "timestamp,verdict,level,lenses" || "$hdr" == "timestamp,verdict,level,lenses,diff_lines" ]]; then
+      sed -i '1s/.*/timestamp,verdict,level,lenses,diff_lines,mode/' "$csv" 2>/dev/null || true
+    fi
+  fi
+  _fw_log_csv monitor-verdicts.csv "timestamp,verdict,level,lenses,diff_lines,mode" "$1,${2:-},${3:-},${4:-},${5:-}"
 }
 
 # 計測（FR-54）: hook 発火の痕跡を mtime で残す（live positive control）。design-gate は Edit/Write 毎に
