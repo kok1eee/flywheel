@@ -222,11 +222,11 @@ fw_is_impl_write() {
   esac
 }
 
-# 完了/放棄スペックを plan/archive/<ts>/ に退避（FR-12）。plan/*.md が無ければ no-op。
+# 完了/放棄スペックを plan/archive/<ts>/ に退避（FR-12）。plan/*.md・notes.md が無ければ no-op。
 # state.json のスナップショットも一緒に残す。
 fw_archive_plan() {
   local plandir="$FW_ROOT/plan"
-  [[ -f "$plandir/design.md" || -f "$plandir/requirements.md" ]] || return 0
+  [[ -f "$plandir/design.md" || -f "$plandir/requirements.md" || -f "$FW_DIR/notes.md" ]] || return 0
   local ts dest f
   ts="$(date -u +%Y%m%d-%H%M%S)"
   mkdir -p "$plandir/archive"
@@ -234,8 +234,17 @@ fw_archive_plan() {
   for f in requirements.md design.md; do
     [[ -f "$plandir/$f" ]] && mv "$plandir/$f" "$dest/"
   done
+  # flywheel note（v0.8.41）: goal スコープの作業ログ。次 goal はクリーンな notes.md から始まる。
+  [[ -f "$FW_DIR/notes.md" ]] && mv "$FW_DIR/notes.md" "$dest/notes.md"
   [[ -f "$FW_STATE" ]] && cp "$FW_STATE" "$dest/state.json"
   printf '%s\n' "$dest"
+}
+
+# .flywheel/notes.md の末尾 N 件を返す（無ければ空。flywheel note で追記される作業ログ）。
+# 2スペースインデント済みで返す（status 表示の sed 's/^/  /' と見た目を揃える）。
+fw_notes_tail() {
+  local n="${1:-3}"
+  [[ -f "$FW_DIR/notes.md" ]] && tail -n "$n" "$FW_DIR/notes.md" | sed 's/^/  /'
 }
 
 # backlog（FR-13）の残件数。

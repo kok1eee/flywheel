@@ -30,6 +30,7 @@ Usage:
   flywheel next              dormant/done のとき backlog 先頭を pop して start
   flywheel _advance <to> <by>  phase 遷移（hook 内部用。FLYWHEEL_HOOK=1 必須・手動使用は拒否される）
   flywheel watch-focus "<text>"   監視 council の重点を指定（FR-30 HITL）。overseer が観測者に渡す
+  flywheel note "<text>"   goal 進行中の作業ログを1行追記（.flywheel/notes.md・compact/中断での now-context 揮発対策）。dormant では拒否
   flywheel monitor-set <clean|drift|pending> [level] [reason] [--lens <a,b>]
         監視 council（Skill: flywheel:monitor）が verdict を記録する入口（FR-30）。
         drift のとき level = implementing|design|requirements を付ける（design/requirements は人間 hand-back）
@@ -163,7 +164,11 @@ case "$cmd" in
     echo "veto    : $(fw_get '.veto_count')"
     echo "watch   : focus=$(fw_get '.watch_focus')  monitor=$(fw_get '.monitor.status') $(fw_get '.monitor.level')"
     _repos="$(fw_get '.repos' | jq -rc '[.[]? | "\(.path) (\(.baseline[0:12]))"] | join(", ")' 2>/dev/null || true)"; echo "repos   : ${_repos:--}"
-    _notes="$(fw_get '.notes')"; [[ -n "$_notes" ]] && echo "notes   : $_notes"
+    _notes="$(fw_get '.notes')"; [[ -n "$_notes" ]] && echo "notes   : $_notes"   # design の種（/add grill・goal開始時1回）
+    if [[ -f "$FW_DIR/notes.md" ]]; then
+      echo "notes.md:"   # 作業ログ（flywheel note で随時追記・上の notes とは別物）
+      sed 's/^/  /' "$FW_DIR/notes.md"
+    fi
     echo "history :"
     jq -r '.history[] | "  \(.ts)  \(.from) → \(.to)  [\(.by)]"' "$FW_STATE" 2>/dev/null || true
     ;;
@@ -177,6 +182,19 @@ case "$cmd" in
     fw_state_exists || { echo "flywheel watch-focus: state がありません（先に start）" >&2; exit 1; }
     fw_set_str watch_focus "${1:-}"
     echo "🔎 flywheel watch-focus: ${1:-（クリア）}"
+    ;;
+  note)
+    # 進行中文脈の軽量スナップショット（2026-07-09）。state.json の .notes（/add の design 種、
+    # goal 開始時に1回）とは別物＝ここは goal 進行中に随時追記する作業ログ（.flywheel/notes.md）。
+    # set-eval/watch-focus と同型: fw_state_exists ガード・phase 不問・FLYWHEEL_HOOK ガード無し
+    # （CLI 書き込みは C-2 対象外）。$FW_DIR は fw_state_exists 通過時点で必ず存在＝mkdir 不要。
+    [[ $# -lt 1 ]] && { echo "flywheel note \"<text>\"" >&2; exit 1; }
+    fw_state_exists || { echo "flywheel note: state がありません（goal 進行中のみ・先に start/adopt）" >&2; exit 1; }
+    # 改行はスペースに畳む: tail -n（greeter 最新3件）/ status 表示が「1行=1エントリ」を前提にしており、
+    # 改行混入で最新件数の集計が壊れうる（simplify altitude 指摘）。ダブルクォートは greeter の
+    # jq --arg 経由で安全にエスケープされるため不問。
+    printf -- '- [%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${1//$'\n'/ }" >> "$FW_DIR/notes.md"
+    echo "📝 flywheel note を記録しました。"
     ;;
   monitor-set)
     # FR-30: 監視 council（Skill: flywheel:monitor）が verdict を記録する入口。

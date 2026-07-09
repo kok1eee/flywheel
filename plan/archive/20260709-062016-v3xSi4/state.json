@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "flywheel note — 進行中文脈の軽量スナップショット。goal進行中限定の `flywheel note \"<text>\"` が .flywheel/notes.md に追記し、greeter が最新3件を SessionStart で同梱・status 表示・done 後は plan/archive へ退避（compact/セッション中断での now-context 揮発を防ぐ・journal を書くほどでもない区切り用）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "確定判断（2026-07-09 Fable 5 grill）: (1)書ける期間=goal進行中限定（fw_state_exists ガード・set-eval と同型。dormant では拒否）。(2)greeter同梱=最新3件のみ（context税と復元力のバランス。古い分は status で見る）。設計スケッチ: CLI `flywheel note \"<text>\"` が .flywheel/notes.md にタイムスタンプ付き1行を append（C-2整合=CLI書き込み・.flywheel/ は gitignore 済みで FR-50 指紋非影響）。session-greeter.sh の active greeting に最新3件（tail -3）を同梱。status に note 行を追加（全件 or tail）。fw_archive_plan に notes.md を同梱（done後の次goal開始時に plan/archive/<ts>/ へ退避＝goal に紐づくライフサイクルが自動で閉じる。reset 経路も次 goal 開始時の archive で同様に清算）。Boundary: bin/flywheel（note ケース+usage）+ hooks/lib/common.sh（fw_archive_plan の同梱1行）+ hooks/session-greeter.sh + test/note.sh 新規（mktemp: C1 append 内容/形式・C2 dormant 拒否・C3 greeter が4件中最新3件だけ同梱・C4 status 表示・C5 archive 同梱）+ README changelog/ROADMAP行更新/version v0.8.41（plugin.json・marketplace.json 2箇所）。曖昧点: greeter の同梱位置（evolve nudge 行との並び順）と notes.md の行フォーマットは design で決める。出所: ROADMAP『進行中文脈の軽量スナップショット』（2026-06-16 pachitown-kb OKF 作業）+ 2026-07-09 計画セッション（実装は Sonnet 5 で行う運用）",
+  "baseline_rev": "20b5db11f443d40173dbdf90c1fdbcaa7e908802",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-09T05:51:37Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-09T05:53:35Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-09T05:53:49Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-09T05:56:31Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T05:56:42Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-09T06:20:04Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-09T06:20:16Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

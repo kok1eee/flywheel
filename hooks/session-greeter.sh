@@ -26,6 +26,8 @@ emit() {  # $1 = additionalContext
 evolve_line="$(fw_evolve_staleness || true)"
 # FR-54: design-gate 発火痕跡の欠如/停滞 warn（hook 部分死の検知・非該当は無音・失敗しても止めない）
 heartbeat_line="$(fw_heartbeat_staleness || true)"
+# flywheel note（v0.8.41）: 進行中文脈の軽量スナップショット。最新3件のみ（context 税とのバランス）
+notes_line="$(fw_notes_tail 3 || true)"
 
 # --- active: 再アンカー ---
 if fw_state_exists; then
@@ -46,7 +48,9 @@ if fw_state_exists; then
   emit "🛞 flywheel 稼働中: phase=$phase
   goal: $(fw_get '.goal')
 $next${heartbeat_line:+
-  $heartbeat_line}
+  $heartbeat_line}${notes_line:+
+  📝 直近のnote:
+$notes_line}
   状態: $FW_CLI status / 中止: $FW_CLI reset / bypass: FLYWHEEL_OFF=1"
 fi
 

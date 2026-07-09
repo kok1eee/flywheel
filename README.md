@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.40 / MIT License
+v0.8.41 / MIT License
 
 ## インストール
 
@@ -160,6 +160,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.41
+- **flywheel note（進行中文脈の軽量スナップショット）** — `flywheel status`（今の state）と `.claude/journal.md`（セッション間 handoff）の中間が無く、compact / セッション中断で「今手に持っている作業仮説・なぜ今これをやっているか」が揮発する一方、journal を書くほどでもない mid-session の区切りは記録先が無かった。`flywheel note "<text>"`（`set-eval`/`watch-focus` と同型・goal 進行中限定＝`fw_state_exists` ガード・dormant は拒否）が `.flywheel/notes.md` に ISO8601 付き1行を追記する。**`.flywheel/` は gitignore 済みなので repo diff / FR-50 指紋に一切影響しない**（monitor clean 記録後に note を書いても re-council を誘発しない——これが plan/ でなく `.flywheel/` 配下に置いた理由）。SessionStart の greeter が `fw_notes_tail` で**最新3件**を同梱（context 税と復元力のバランス）、`flywheel status` は全件表示（オンデマンドの深掘りは制限しない）。ライフサイクルは既存 FR-12 `fw_archive_plan` に相乗り: done / 次 goal 開始時に notes.md を `plan/archive/<ts>/notes.md` へ退避し、次 goal は空の notes.md から始まる（reset 経路も次 goal 開始時の archive で同様に清算）。既存 state.json の `.notes` フィールド（`/add` 軽量 grill が詰める design の種・goal 開始時に1回書かれる）とは別物——`notes.md` は goal 進行中に随時追記する作業ログで、status 表示でも別行。`test/note.sh`(C1 append 形式 / C2 dormant 拒否 / C3 greeter 最新3件 / C4 status 全件 / C5 archive)。出所: pachitown-kb OKF 作業 2026-06-16 + 2026-07-09 Fable 5 での計画（実装は Sonnet 5）。
 
 ### 0.8.40
 - **agent model tiering（観測・レビュー専任 agent の sonnet 静的固定）** — メインループの Fable 5 移行で、`model: inherit` のままの fan-out agent（監視 council の観測者 3 体＝goal 毎に必発・最頻の fan-out 面）が上位モデルで走りコスト過大になる問題。7/3 の memory 運用ルール「観測系 subagent は spawn 時に `model: "sonnet"` を明示」は prompt-level（spawn するモデルが memory を思い出せば効く）で機械強制が無く、C-2 思想（モデルの記憶に頼らず機械が強制）に照らして frontmatter への静的固定に切り替えた。判定基準は「**考える部分（要件・設計の生成）か、視て判断を返すだけか**」: sonnet 固定 12（drift-observer / architecture-mapper / code-explorer / critic / researcher / scout を inherit→sonnet 変更 + convention-scout / market-researcher / oss-scout / pattern-observer / security-reviewer / debugger の既存固定を維持。debugger はユーザー判断＝難案件はメインループが直接デバッグする運用でカバー）、inherit 維持 2（analyst / designer ＝考える部分）、対象外 1（capabilities＝spawn されない reference doc）。**機械ガード** `test/agent-model-tiering.sh`（FR-51 同型・grep-lib）: 層別リスト照合 + **リスト外検知（新 agent 追加時の指定忘れを fail）** + 層別リスト全ファイルの実在 assert（rename 検知）+ positive control 実走（層別違反 fixture と リスト外 fixture を検出して非ゼロ）。旧 memory の「静的書き換えは避ける（転用時の硬直化）」懸念は、Agent ツールの明示 `model` パラメータが frontmatter より優先されるため per-call override 余地が残ることで解消（memory も更新）。出所: 2026-07-09 会話（Fable 5 移行に伴う observer コスト対策・monitor 必要性議論の帰結）。

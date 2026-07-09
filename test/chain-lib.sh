@@ -27,6 +27,12 @@ state() { echo "$REPO_T/.flywheel/state.json"; }
 getf()  { jq -r "$1" "$(state)"; }
 blc()   { local b="$REPO_T/.flywheel/backlog.jsonl"; [ -s "$b" ] && grep -c . "$b" || echo 0; }
 
+# session-greeter.sh を起動し additionalContext を返す（note.sh が利用。同型の定義が
+# heartbeat.sh/evolve-nudge.sh にも個別に残っている＝rule-of-three 到達分の共有ヘルパーだが、
+# 既存2ファイルの遡及置換は未実施。improvements.md に次回同乗の候補として記録済み）。
+GREETER="$REPO/hooks/session-greeter.sh"
+greeter_ctx() { bash "$GREETER" </dev/null 2>/dev/null | jq -r '.hookSpecificOutput.additionalContext // empty'; }
+
 # jq_patch <file> <jq-args...>: JSON ファイルへの「jq → tmp → mv」上書きの共有形（FR-56）。
 # 例: jq_patch "$s" '.phase="eval"' / jq_patch "$s" --arg p "$p" '.phase=$p'
 jq_patch() { local f="$1"; shift; jq "$@" "$f" > "$f.tmp" && mv "$f.tmp" "$f"; }
