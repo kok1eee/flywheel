@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "ultrawork — 全部Fable固定のjudge panelスキル/コマンド。戦略・分析系の問いに対し、Fableが動的に切り口(lens)を決定→切り口ごとにFableで候補案を並列生成→Fableが審査→勝者に他候補の良い所を接木してFableが最終回答を統合。flywheelの状態機械(goal/eval/monitor)には乗せない一発回答用コマンド",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "確定判断（2026-07-10 grill）: (1)Done=構造アサートテスト（test/ultrawork-skill.sh新規・grepベース。skills/ultrawork/SKILL.mdの存在・frontmatter必須項目（name/description/allowed-tools）・本文が Workflow ツール呼び出しと model:\"fable\" 指定を含むことをassert。gotcha-actor-routing.shと同型。実際にAgent/Workflowを動かす実行テストは高コスト/非決定論なので対象外）。(2)Boundary=skills/ultrawork/SKILL.md新規（Plan→Generate→Judge→SynthesizeのWorkflowスクリプトを記述。全agent()呼び出しにmodel:\"fable\"明示）+ commands/ultrawork.md新規（/ultrawork <問い>で明示起動。add.md等と同型のargument-hint+frontmatter）+ test/ultrawork-skill.sh新規 + README changelog/ROADMAP行追加/version bump（plugin.json・marketplace.json 2箇所）。既存backlogは空で重複なし。(3)依存・曖昧点: 他phaseへの依存なし（flywheelの状態機械=goal/eval/monitorには一切乗らない・一発回答用の独立コマンド）。未確定点はdesign.mdで決める: 候補数のmin/max、lens決定の具体的なWorkflow構造（Plan段のagent()が何を返すか）、最終回答の提示形式（会話に直接返す/Artifact化/両方）、エラー処理（Judge段で票が割れた場合の扱い）。出所: 2026-07-09〜10のultrawork設計議論（元ネタ=flywheelの原点となったメタプロンプト『目的→AI自身が最適な指示文を設計→必要なら質問→常識にとらわれず全リソース総動員でトップレベルの回答』の④部分の実装）。運用: メインセッションのモデルに関係なく常にFable品質を保証する（Fable=advisor役という既存運用方針の拡張・new tier: 判断最大化部分は model:fable固定）",
+  "baseline_rev": "df32f53cfee2ff4e0a7ff8f0012d3f0c459461ff",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-10T04:00:42Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-10T04:06:39Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-10T04:15:10Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-10T04:17:52Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-10T04:18:09Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-10T04:36:41Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-10T04:36:57Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}
