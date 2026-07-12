@@ -3,7 +3,20 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
-## 2026-07-04 09:58 [ip-10-0-67-244]
+## 2026-07-13 08:24 [ip-10-0-67-244]
+
+### Recap
+**Fable 5 のプロンプティング記事（Linas's Newsletter 6/12付）を claude-api リファレンス + anthropic.com 公式発表でファクトチェック**。主要な主張はほぼ正確と確認: (a) 価格 $10/$50 per MTok = Opus 4.8（$5/$25）の2倍、(b) Pro/Max/Team/席課金Enterprise へのプラン内包は **2026-06-22 で終了済み**（以降は usage credits / API・従量制Enterprise は期限なし）、(c) 「旧モデル向けの prescriptive なプロンプト/skill は Fable 5 で品質を下げる」は公式 migration guide にも明記（de-prescribe 推奨）、(d) `send_to_user` ツール・30日データ保持要件・refusal→Opus 4.8 fallback（API では opt-in）はすべて実在。運用への含意: このセッション自体が Fable 5 で稼働中（memory `main-loop-model-routing` の「メインは Sonnet 5 固定」と不整合の可能性）、`flywheel:ultrawork` は全 Fable 7〜9体構成で 6/22 以降コストが直撃。この気づきを受け、ユーザーから **6領域の全体レビュー**（①effortレベル ②モデルの使い分け ③コンテキスト衛生 ④markdownメモリシステム ⑤オーケストレーター ⑥定期的な見直しのリズム）を次セッションへ引き継ぐ指示。
+
+### Next
+- **①effort**: flywheel の subagent spawn / Workflow `agent()` 呼び出しに effort 指定戦略を棚卸し（機械的ステージ=low、judge/design=high〜xhigh）。`agents/*.md` frontmatter と `skills/ultrawork` の opts.effort を確認
+- **②モデル**: memory `main-loop-model-routing.md`（メイン=Sonnet 5固定）と現状（本セッションは Fable 5）の整合を確認・memory 更新。ultrawork の全 Fable panel を $10/$50 前提でコスト再評価し、審査系の一部を Opus 4.8 に落とす tiering 案を ROADMAP に追記検討
+- **③コンテキスト衛生**: NTS / flywheel note (v0.8.41) / handoff-journal / built-in compaction の役割分担を1枚に整理し、長時間セッションの運用ルールを決める
+- **④memory**: `~/.claude/projects/-home-ec2-user-masayoshi-flywheel/memory/` を棚卸し — stale 候補（`tool-hang-vary-tactics`=「次モデルで解消見込み」は Fable 移行で検証、`main-loop-model-routing` の実態乖離）を更新/削除。Fable 推奨の「1 lesson per file + why」形式との整合確認
+- **⑤オーケストレーター**: Workflow / ultrawork / delegate-task / spawn-session(herdr) / flywheel chain の使い分け地図を `flywheel:guide` に追記するか検討（記事のオーケストレーター+安価ワーカー routing パターンとの突き合わせ）
+- **⑥見直しリズム**: `/flywheel:evolve` が 7/9 以来未実行（直近5 goal 未消化）→ まず evolve 実行。skill-cleaner / skill-eval / evolve の定期起動 cadence（週1等）を決めて運用に落とす
+
+
 
 ### Recap
 **/code-review xhigh の 1 指摘（Gotcha 誤配送）を起点に、FR-51〜57 の 7 goal を flywheel dogfood で連続実装し v0.8.32〜v0.8.38 として全て origin/main に push（`main@origin = 6473a7c2`）**。系譜: evolve actor-routing の機械検査（gotcha-actor-routing.sh）→ lens 効果計測（`monitor-set --lens` → monitor-verdicts.csv・初の drift/clean 実データ記録）→ 2.1.198 の subagent 背景デフォルト化対応（monitor council の sync 明記 + hooks-wiring ガード。fork 空振り Gotcha 113 の構造的 root cause を特定）→ design-gate heartbeat live-control（hook 部分死の検知）→ fan-out 棚卸し（council が agents/ 7 ファイルの `background: true` 残骸を捕捉・除去）→ テスト基盤整理（with_readonly / jq_patch / mk_git_repo の rule-of-three 抽出）→ sibling gitignore 警告（FR-50 follow-up 解消）。運用面の決定: **観測・判断のみの subagent（drift-observer / cleanup reviewer 等）は main モデル問わず Sonnet 5 固定**（memory `subagent-model-no-fable-inherit` に記録・列挙のみは Haiku 可）。2.1.200 で AskUserQuestion の自動継続が廃止（無人 chain では質問が恒久ブロック→guide Gotchas に注記済み）。
