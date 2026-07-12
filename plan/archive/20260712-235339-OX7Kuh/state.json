@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "ultrawork の judge panel を全 Fable 固定から全 Opus 4.8 固定へ移行する（Fable 5 が 2026-07-13 以降本環境で利用不可になるため。放置すると panel の agent 呼び出しが全滅し degrade フォールバックしか動かなくなる）。変更対象: (1) skills/ultrawork/SKILL.md — canonical Workflow スクリプト内の model: fable 全箇所（plan/generate/judge/synthesize）を opus に、説明文・Gotchas の「全 Fable」記述を「全 Opus 4.8」に更新 (2) commands/ultrawork.md — 同期 (3) test/ultrawork-skill.sh — 「agent 呼び出し数 == fable 指定数」assert を opus に変更 (4) version bump v0.8.44（plugin.json / marketplace.json / README 冒頭 + Changelog / ROADMAP 状態列の「全 Fable」記述）。eval は bash test/run-all.sh",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "spec",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "",
+  "baseline_rev": "1ba849d3757abba55142ed562fdd68235eb40d1d",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-12T23:38:29Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-12T23:39:40Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-12T23:41:28Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-12T23:44:03Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-12T23:44:20Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-12T23:53:22Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-12T23:53:39Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}
