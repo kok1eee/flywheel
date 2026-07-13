@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.44 / MIT License
+v0.8.45 / MIT License
 
 ## インストール
 
@@ -161,6 +161,9 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.45
+- **error-fix — エラー修正モード + 教訓ゲート（ドクトリン層の育成をループに接続）** — 失敗はドクトリン層（memory→rule→hook 昇格パイプライン）の原材料が最も濃い瞬間なのに、修正が終わった後の教訓回収がモデルの記憶規律任せで蒸発していた（記帳の強制側はユーザーの doctrine-nudge hook で解決済み・「内容が生まれる瞬間」の接続点が未整備だった）。`commands/error-fix.md`: ①根因特定（自明は直接・非自明は debugger agent 委譲＝推測修正禁止）→ ②修正+検証（verification の Iron Law 参照）→ ③**教訓ゲート**（スキップ禁止）: (a) 不変性フィルタ「このミスはモデルが賢くなっても踏むか？」で大半を落とす（typo に教訓は要らない） (b) 2回ルール: auto-memory を検索し初回=memory 無確認記録・2回目以降 or 決定的判定可=rule/hook 昇格を AskUserQuestion 1問で提案（**恒久層は無断で書かない**=HOTL「決める=人間」の教訓層への適用） (c) 記帳先はユーザーの `~/.claude/doctrine.md` を**存在すれば Read して従う soft-reference**（タグ体系を plugin に複製しない・無ければ memory 記録まで＝個人レイヤーで plugin を汚さない/generic 動作は保つ） (d) hook 昇格は発火テスト同梱必須（死に hook 防止）。flywheel 状態機械には不接続（stateless・goal 級に化けたら /flywheel:start へ誘導。C-2 整合）。`agents/debugger.md` の出力フォーマットに「恒久教訓候補」節を追加（error-fix 非経由の debugger 単体起動でも候補が surface する保険。agent は報告まで・書くのは main loop）。`test/error-fix-command.sh`（C1-C5: 教訓ゲート4要素 / HOTL / stateless / タグ体系非複製 / debugger 報告のみ、の grep assert）。出所: 2026-07-13 doctrine 層整備セッション（aws-security-guard 昇格・死に hook 蘇生・doctrine-nudge 作成の続き、「発火テストとかは flywheel done の時に」というユーザー提案を「done ゲートでなく修正完了の瞬間に接続」へ再設計）。
 
 ### 0.8.44
 - **ultrawork の judge panel を全 Fable → 全 Opus 4.8 へ移行（Fable 退役対応）** — Fable 5 のプラン内包が 2026-06-22 で終了し、本環境では 2026-07-13 以降利用不可（エンタープライズ移行は不採用・以後の運用は Sonnet 5 メイン + Opus 4.8 強モデル）。ultrawork は canonical スクリプト内の全 agent 呼び出しが `model: 'fable'` 固定のため、放置すると panel の agent が全滅し degrade フォールバック（通常の単発回答）しか動かなくなる。「メインのモデルに関係なく常に**可用な最強モデル**の思考品質」という設計意図は保ったまま、固定先を `opus`（= Opus 4.8）に差し替え（env 等でのパラメータ化は YAGNI——可用な最強モデルが変わったらこの1点を再度差し替える）。`skills/ultrawork/SKILL.md`（script 4箇所 + 説明・Gotchas）+ `commands/ultrawork.md` を同期、`test/ultrawork-skill.sh` は不変条件を `check_all_opus` に反転し **fable を退役モデルとして混入検査の対象に**（残骸・巻き戻りを CI が fail。positive control の混入 fixture も fable で実走）。出所: 2026-07-13 Fable 退役日の移行作業（Fable 5 ベストプラクティス6領域レビューの一環）。
