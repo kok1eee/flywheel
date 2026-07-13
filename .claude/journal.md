@@ -3,7 +3,19 @@
 > セッション間の引き継ぎ。最新が上。Recap を時系列アーカイブとして保持し、
 > 次のアクションを明示する。詳細なセッション内要約は built-in `/recap` も併用。
 
-## 2026-07-13 08:24 [ip-10-0-67-244]
+## 2026-07-13 09:07 [ip-10-0-67-244]
+
+### Recap
+**Fable 5 退役日（本環境では本日以降利用不可・エンタープライズ移行不採用）の移行作業を同一セッションで完遂**。朝の handoff エントリ（1つ下）の6領域レビューは引き継がず本セッションで消化した。(1) **v0.8.44**: ultrawork の judge panel を全 Fable→全 Opus 4.8 へ移行（flywheel adopt 経路で dogfood: design→eval 全緑→simplify 3件適用→lite council clean→done。test は `check_all_opus` に反転し fable を退役モデルとして混入検査対象化）。(2) **memory 更新**: `main-loop-model-routing` を新体制（メイン=Sonnet 5・強モデル=Opus 4.8・advisorModel=opus・plan は opusplan）に書き換え、`tool-hang-vary-tactics` に「7/13 以降 plan/advisor で 4.8 復帰＝再び注意」を追記、`subagent-model-no-fable-inherit.md` → `subagent-model-tiering.md` に rename（frontmatter と一致）。(3) **guide 追記**: 文脈の記録先の使い分け（note/handoff/dormant）+ flywheel 外オーケストレーション地図の節。(4) **ROADMAP に follow-up 2行**: ultrawork per-stage effort 調整 / evolve Gotchas 剪定モード（公式「旧モデル向け prescriptive scaffolding は品質を下げる」の翻訳・最重要）。(5) **evolve 実行**: handoff に +1 Gotcha（区切り確定前の handoff で Next が即 stale 化）。monitor fork 空振りの「頻度減」はサンプル1件（今日 fork 完走）で保留。(6) settings.json を model=sonnet 5 / advisorModel=opus に戻し（本エントリ直後に実施）。Fable 参照の全域掃引済み: dotfiles/他リポ/sdtab に live 参照ゼロ・未確認はクラウド scheduled routines のみ。
+
+### Next
+- 新セッションで Sonnet 5 メイン + advisorModel=opus が効いているか確認（/advisor が unavailable にならないこと）。plan 作業で `/model opusplan` を試す
+- クラウド scheduled routines（/schedule 管理）があれば fable 使用の有無を確認
+- monitor fork 完走の2件目を観察 → 続けば次の evolve で「頻度減」を注記し 06-15 の旧 bullet 整理
+- ROADMAP の Fable 退役 follow-up 2行（ultrawork effort 調整 / evolve 剪定モード）を `/flywheel:add` で積む（剪定モードが先。Opus 4.8 復帰でどの Gotcha が prescriptive 過剰かの棚卸しを兼ねる）
+- improvements.md の ultrawork 同乗 2件（同点フォールバック / frontmatter 限定 grep）は次の非緊急 ultrawork goal で消化
+
+
 
 ### Recap
 **Fable 5 のプロンプティング記事（Linas's Newsletter 6/12付）を claude-api リファレンス + anthropic.com 公式発表でファクトチェック**。主要な主張はほぼ正確と確認: (a) 価格 $10/$50 per MTok = Opus 4.8（$5/$25）の2倍、(b) Pro/Max/Team/席課金Enterprise へのプラン内包は **2026-06-22 で終了済み**（以降は usage credits / API・従量制Enterprise は期限なし）、(c) 「旧モデル向けの prescriptive なプロンプト/skill は Fable 5 で品質を下げる」は公式 migration guide にも明記（de-prescribe 推奨）、(d) `send_to_user` ツール・30日データ保持要件・refusal→Opus 4.8 fallback（API では opt-in）はすべて実在。運用への含意: このセッション自体が Fable 5 で稼働中（memory `main-loop-model-routing` の「メインは Sonnet 5 固定」と不整合の可能性）、`flywheel:ultrawork` は全 Fable 7〜9体構成で 6/22 以降コストが直撃。この気づきを受け、ユーザーから **6領域の全体レビュー**（①effortレベル ②モデルの使い分け ③コンテキスト衛生 ④markdownメモリシステム ⑤オーケストレーター ⑥定期的な見直しのリズム）を次セッションへ引き継ぐ指示。
