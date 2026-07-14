@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "flywheel — Sensors-first / harness-driven loop engine（o-m-cc 後継）",
-    "version": "0.8.45"
+    "version": "0.8.47"
   },
   "plugins": [
     {
       "name": "flywheel",
       "description": "Sensors-first / harness-driven loop engine。auto mode を前提に『設計が無ければ実装を物理ブロック』する門を hook で強制し、設計合格後は goal 達成まで自動で回す。done の前には監視 council（別 verifier）で drift を検証する。設計フェーズの judgment library（grill/critic/scout/design/discovery-council/monitor 等）+ validate-plan を同梱した自己完結プラグイン（o-m-cc 後継）。",
-      "version": "0.8.45",
+      "version": "0.8.47",
       "source": "./"
     }
   ]

@@ -1,0 +1,73 @@
+{
+  "phase": "done",
+  "goal": "Skill: flywheel:monitor をメインループから Skill tool 経由で呼ぶと forked execution 扱いになり、loop-driver の steer が出す「lite council 可」「標的再council 可」の明示hintを無視して常に3レンズ full fan-out にフォールバックする既知バグ（SKILL.md Gotcha記載済み・実運用で未遵守）を、PreToolUse hook で機械的に検知・警告して防ぐ",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: 新規 hooks/monitor-fork-guard.sh（PreToolUse・matcher=Skill、tool_input.skill==\"flywheel:monitor\"を検知）+ hooks.json配線 + 新規 test/monitor-fork-guard.sh + skills/monitor/SKILL.mdのGotcha「[2026-06-15] forked実行が空振りする」を更新（hookで機械的対策済みと追記）。loop-driver.shのlite/標的hint判定ロジック（watch_focus/last_drift/diff計算）は複製しない＝ロジック分散を避けるため、hookはSkill(flywheel:monitor)呼出し全件で「fork実行だとlite/標的hintが無視されるリスクあり。inline実行を検討したか確認」とask decisionを返す設計（過検知は許容・人間が即断できるため）。発火はphase=eval/polishのときのみ（他phaseはmonitor呼出し想定外）。依存: なし。非スコープ: monitor cap値の見直し、drift-observerのHaiku化（別goal）。",
+  "baseline_rev": "80870b411bc4f6e66b0628ac249f9b8a710478bd",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-21T01:43:48Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-21T01:45:16Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-21T01:45:37Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-21T01:50:28Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-21T01:50:47Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-21T01:51:48Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-21T02:03:31Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor cap 8 到達 — 人間介入が必要"
+    },
+    {
+      "ts": "2026-07-21T02:04:08Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-21T02:27:55Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

@@ -166,6 +166,14 @@ case "$cmd" in
     echo "watch   : focus=$(fw_get '.watch_focus')  monitor=$(fw_get '.monitor.status') $(fw_get '.monitor.level')"
     _repos="$(fw_get '.repos' | jq -rc '[.[]? | "\(.path) (\(.baseline[0:12]))"] | join(", ")' 2>/dev/null || true)"; echo "repos   : ${_repos:--}"
     _notes="$(fw_get '.notes')"; [[ -n "$_notes" ]] && echo "notes   : $_notes"   # design の種（/add grill・goal開始時1回）
+    # monitor council の mode 内訳（全 goal 累積・v0.8.46）。CSV は fw_log_monitor_verdict が
+    # monitor-set 呼出ごとに追記（lite/標的council のコスト比例制御・FR-52 が実際どれだけ
+    # 効いているかの可視化。CSV が無ければ行自体を出さない）。
+    _mvcsv="$(fw_data_dir)/monitor-verdicts.csv"
+    if [[ -f "$_mvcsv" ]]; then
+      _mstats="$(awk -F',' 'NR>1{c[$6]++} END{printf "full=%d targeted=%d lite=%d 未記録=%d", c["full"]+0, c["targeted"]+0, c["lite"]+0, c[""]+0}' "$_mvcsv" 2>/dev/null)"
+      echo "monitor mode: $_mstats（累積・全goal）"
+    fi
     if [[ -f "$FW_DIR/notes.md" ]]; then
       echo "notes.md:"   # 作業ログ（flywheel note で随時追記・上の notes とは別物）
       sed 's/^/  /' "$FW_DIR/notes.md"

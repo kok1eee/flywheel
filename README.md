@@ -2,7 +2,7 @@
 
 > **Claude Code を「設計してから作る」マシンにする plugin。** 設計が無ければ実装ツールを hook が物理的にブロックし、設計が validate を通って初めて実装ゲートが開き、goal の完了条件（eval）を満たすまで自動で回り続ける。設計フェーズの judgment library（grill / critic / scout / discovery-council 等の skill・agent）と `validate-plan` を同梱した自己完結プラグイン。
 
-v0.8.45 / MIT License
+v0.8.47 / MIT License
 
 ## インストール
 
@@ -161,6 +161,12 @@ designing フェーズの judgment library を同梱し、**実行時の外部 p
 設計判断の全記録は [plan/design.md](plan/design.md) / [plan/requirements.md](plan/requirements.md) 参照。今後候補: FR-3 headless 分岐（grill↔critic）、eval の挙動検証（verification 統合）、`FLYWHEEL_PLAN` の default 化判断。
 
 ## Changelog
+
+### 0.8.47
+- **monitor council の fork 空振り（lite hint 無視）を PreToolUse hook で機械的に防ぐ** — v0.8.46 の作業中、`Skill: flywheel:monitor` を Skill tool 経由で呼んだところ、loop-driver の steer が「diff 54行・lite council 可」と明示していたのに実際は3レンズ full fan-out で走った（`monitor-verdicts.csv` に `diff=54, mode=full` として実例が残る）。これは `skills/monitor/SKILL.md` の既存 Gotcha「forked 実行が verdict を出さず空振りする」に記載済みの既知バグの別の症状（fork だと lite/標的 hint も同時に無視される）で、文書の注意書きだけでは実運用で守られなかった。当初「lite/標的判定の閾値（`FLYWHEEL_MONITOR_LITE_DIFF`）を上げる」対策を検討したが、実データ（`diff=75` が `full`/`lite` 両方で記録）から閾値自体は正しく機能していることが判明し不採用。**loop-driver の hint 判定ロジック（`watch_focus`/`last_drift`/diff 計算、state.json に保存されずその場で計算して消える）は複製せず**、新規 `hooks/monitor-fork-guard.sh`（PreToolUse・matcher: Skill）が eval/polish phase での `Skill: flywheel:monitor` 呼出し全件を deny で機械的にブロックする設計にした（`permissionDecision: "deny"`）。監視 council レビューで「ask だと monitor は最頻出 multi-agent 操作（139回/5週）なので毎回人間確認を挟むことになり、HOTL の『人間は on-loop』原則に逆行する。fork してよいケースは無いので対策（inline 実行）は常に同じ——過検知しても redirect 先は変わらないので deny でよい」との指摘を受け、当初案の ask から deny に変更した。`hooks/hooks.json` の既存 `"matcher": "Skill"` エントリに hook を追加配線（skill 名の stdin 判定を state.json 読み込みより先に行い、対象外呼出しの disk I/O を回避）。`skills/monitor/SKILL.md` の Gotcha に追記。`test/monitor-fork-guard.sh`（C1/C2: eval/polish で deny / C3: 対象外 phase で deny なし / C4: 対象外 skill で deny なし / C5: FLYWHEEL_OFF=1 で無効化）。cap 値見直し・`drift-observer` の Haiku 化は別 goal（非スコープ）。出所: 2026-07-21 トークン使用量調査の続き（v0.8.46 goal 実行中に自ら踏んだ実例から派生。監視 council の altitude レビューで ask→deny に是正）。
+
+### 0.8.46
+- **monitor council の mode 内訳を `flywheel status` に表示** — Enterprise 契約後のトークン使用量調査で `flywheel:monitor` の呼出頻度が他の multi-agent 機構より1桁多いことが判明し、当初は「mode（lite/targeted/full）を計測するテレメトリを新設する」goal として着手した。しかし実装時に、そのテレメトリは v0.8.42 で `fw_log_monitor_verdict`（`monitor-set` 呼出ごとに `monitor-verdicts.csv` へ追記）として既に存在していたことが判明（見落とし＝重複実装になるところを実装直前に検出）。**記録は既にある、無いのは「見る場所」** に goal をリダイレクト。`bin/flywheel` の `status)` に、`monitor-verdicts.csv` の6列目 `mode` を集計して `monitor mode: full=N targeted=N lite=N 未記録=N（累積・全goal）` の1行を追加（CSV が無ければ行自体を出さない）。実データ（54行・mode記録済み19件）: full=13(68%) / targeted=4 / lite=2 — コスト比例制御は機能しているが、まだ過半数が full 3レンズ fan-out という実態が可視化された。閾値（`FLYWHEEL_MONITOR_LITE_DIFF`）調整はこのデータを見た上での次の判断として非スコープに残す。`test/monitor-mode-status.sh`（C1: CSV無し→行非表示 / C2: fixture 集計一致 / C3: 実 monitor-set 呼出の反映）。出所: 2026-07-14 トークン使用量調査 → `/flywheel:add` → adopt。
 
 ### 0.8.45
 - **error-fix — エラー修正モード + 教訓ゲート（ドクトリン層の育成をループに接続）** — 失敗はドクトリン層（memory→rule→hook 昇格パイプライン）の原材料が最も濃い瞬間なのに、修正が終わった後の教訓回収がモデルの記憶規律任せで蒸発していた（記帳の強制側はユーザーの doctrine-nudge hook で解決済み・「内容が生まれる瞬間」の接続点が未整備だった）。`commands/error-fix.md`: ①根因特定（自明は直接・非自明は debugger agent 委譲＝推測修正禁止）→ ②修正+検証（verification の Iron Law 参照）→ ③**教訓ゲート**（スキップ禁止）: (a) 不変性フィルタ「このミスはモデルが賢くなっても踏むか？」で大半を落とす（typo に教訓は要らない） (b) 2回ルール: auto-memory を検索し初回=memory 無確認記録・2回目以降 or 決定的判定可=rule/hook 昇格を AskUserQuestion 1問で提案（**恒久層は無断で書かない**=HOTL「決める=人間」の教訓層への適用） (c) 記帳先はユーザーの `~/.claude/doctrine.md` を**存在すれば Read して従う soft-reference**（タグ体系を plugin に複製しない・無ければ memory 記録まで＝個人レイヤーで plugin を汚さない/generic 動作は保つ） (d) hook 昇格は発火テスト同梱必須（死に hook 防止）。flywheel 状態機械には不接続（stateless・goal 級に化けたら /flywheel:start へ誘導。C-2 整合）。`agents/debugger.md` の出力フォーマットに「恒久教訓候補」節を追加（error-fix 非経由の debugger 単体起動でも候補が surface する保険。agent は報告まで・書くのは main loop）。`test/error-fix-command.sh`（C1-C5: 教訓ゲート4要素 / HOTL / stateless / タグ体系非複製 / debugger 報告のみ、の grep assert）。出所: 2026-07-13 doctrine 層整備セッション（aws-security-guard 昇格・死に hook 蘇生・doctrine-nudge 作成の続き、「発火テストとかは flywheel done の時に」というユーザー提案を「done ゲートでなく修正完了の瞬間に接続」へ再設計）。

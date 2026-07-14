@@ -1,0 +1,73 @@
+{
+  "phase": "done",
+  "goal": "monitor-set にmode/lens/diff_lines/timestampを.flywheel/monitor-log.jsonlへappendする永続テレメトリを追加し、lite/標的/full councilの実際の使用比率を計測可能にする（v0.8.42のコスト比例制御が実際どれだけ効いているか、閾値調整の判断材料をデータで持てるようにする）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: bin/flywheel の monitor-set サブコマンドのみ（--mode/--lens受領時に .flywheel/monitor-log.jsonl へ mode/lens/diff_lines/timestamp を1行appendする処理を足す。backlog.jsonl同様ローカル限定・gitignore）。monitor/SKILL.mdのfan-out判定ロジック・loop-driver.shのhint生成は一切変更しない。依存: なし。曖昧点（スコープ外）: 集計結果をflywheel statusに表示するか。既存archiveの.monitor.modeが未記録だった原因は深追いしない。",
+  "baseline_rev": "80870b411bc4f6e66b0628ac249f9b8a710478bd",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-14T08:53:55Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-14T08:55:01Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-14T08:55:18Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-14T09:16:30Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-14T09:16:47Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-14T09:52:30Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-14T09:56:36Z",
+      "from": "eval",
+      "to": "implementing",
+      "by": "loop-driver: monitor cap 8 到達 — 人間介入が必要"
+    },
+    {
+      "ts": "2026-07-14T09:56:43Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-16T03:39:19Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}

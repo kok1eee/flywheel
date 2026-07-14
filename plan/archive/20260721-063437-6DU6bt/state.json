@@ -1,0 +1,61 @@
+{
+  "phase": "done",
+  "goal": "plan/design.md をimplementing/eval/polish phase中にEditしても、state.json の .goal フィールドがdesign.mdの見出しから再同期されず古いまま残る問題を直す（design-validator.shのfw_gate_closedガードがdesigning/no-spec限定のため、mid-flight編集を検知していないのが原因）",
+  "design_path": "plan/design.md",
+  "eval_cmd": "bash test/run-all.sh",
+  "eval_src": "explicit",
+  "polish": true,
+  "polished": true,
+  "veto_count": 0,
+  "entry": "adopt",
+  "notes": "Boundary: hooks/design-validator.sh のみ拡張（既存のfw_gate_closed判定=designing/no-spec限定のガードに加え、fw_work_active（spec-ready|implementing|polish|eval）のときもdesign.mdへのEdit/Writeを検知して.goal同期の分岐を通す）。design.mdの見出し行（`^# `で始まる最初の行、`# `の後のテキスト）を.goalの正式テキストとして再抽出しstate.jsonへ書き込む。.notesは同期対象外（design.mdは複数セクションの自由形式でnotesに対応する明確な1行が無いため）。design.mdが無い/見出しが無いケースはno-op（現状維持）。新規test（design.md編集→hook発火→state.json .goal確認、designing/no-spec時は従来動作に影響しないことも確認）。依存: なし。",
+  "baseline_rev": "80870b411bc4f6e66b0628ac249f9b8a710478bd",
+  "watch_focus": "",
+  "monitor": null,
+  "monitor_attempts": 0,
+  "history": [
+    {
+      "ts": "2026-07-21T05:41:03Z",
+      "from": "no-spec",
+      "to": "designing",
+      "by": "flywheel adopt"
+    },
+    {
+      "ts": "2026-07-21T05:41:26Z",
+      "from": "designing",
+      "to": "spec-ready",
+      "by": "design-validator: validate-plan design pass"
+    },
+    {
+      "ts": "2026-07-21T05:41:46Z",
+      "from": "spec-ready",
+      "to": "implementing",
+      "by": "design-gate: first source edit"
+    },
+    {
+      "ts": "2026-07-21T05:46:50Z",
+      "from": "implementing",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-21T05:47:09Z",
+      "from": "eval",
+      "to": "polish",
+      "by": "loop-driver: enter polish +monitor"
+    },
+    {
+      "ts": "2026-07-21T05:47:59Z",
+      "from": "polish",
+      "to": "eval",
+      "by": "loop-driver: enter eval"
+    },
+    {
+      "ts": "2026-07-21T06:34:37Z",
+      "from": "eval",
+      "to": "done",
+      "by": "loop-driver: eval pass (bash test/run-all.sh) + monitor clean (fingerprint 一致)"
+    }
+  ],
+  "last_fail_count": 0
+}
